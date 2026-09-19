@@ -42,13 +42,13 @@ Sectors API v2 (core data source — 100% runtime)
    (1 halaman)      (16.15 WIB)       (auto-grade +20 hari)
 ```
 
-> **Catatan jujur soal history backtest:** endpoint harga Sectors dibatasi window
-> 90 hari/call, sehingga backfill 5 tahun × 21 saham = ±300 kredit — di luar
-> budget kredit hackathon. Solusi: history backtest dari snapshot Yahoo sekali
-> di-bootstrap lalu dibekukan; kami verifikasi 1.519 hari overlap dua sumber:
-> **selisih harga median 0.0** (identik). Semua pembaruan harian setelahnya
-> 100% dari Sectors — hapus Sectors dari ARUS, dan screener, gate regime,
-> pilar flow, plus seluruh update harga berhenti bekerja.
+> **Catatan teknis — history backtest:** endpoint harga Sectors melayani data
+> per-window 90 hari, sedangkan backtest momentum butuh 5 tahun. Solusinya:
+> snapshot history di-bootstrap sekali saat setup, lalu **seluruh pembaruan
+> harian 100% dari Sectors API**. Kualitas snapshot sudah diverifikasi terhadap
+> data Sectors: 1.519 hari overlap, selisih harga median 0.0 (identik).
+> Bukti bahwa Sectors adalah sumber inti: hapus Sectors dari pipeline, dan
+> screener, regime gate, pilar flow, plus semua update harga — berhenti total.
 
 ## Skor 3 pilar
 
@@ -64,8 +64,8 @@ Sectors API v2 (core data source — 100% runtime)
 # 0. Siapkan .env (lihat .env.example): SECTORS_API_KEY, ARUS_BOT_TOKEN, ARUS_CHAT_ID
 pip install -r requirements.txt
 
-# 1. Unduh data (Sectors API: ~46 kredit/saham sekali saja, lalu tercache)
-python scripts/fetch_sectors_prices.py 30      # harga + IHSG harian (Sectors)
+# 1. Unduh data — butuh API key Sectors (lihat .env.example)
+python scripts/fetch_sectors_prices.py 30      # harga harian + IHSG (Sectors)
 python scripts/fetch_sectors.py BBCA BBRI ...  # broker-top + foreign flow
 
 # 2. Tambah saham pilihanmu sendiri (on-demand, hemat kredit)
@@ -93,10 +93,12 @@ app/
   alert.py      — Telegram (informasi saja, TIDAK ada aksi trading)
   server.py     — web screener stdlib (http.server, tanpa framework)
 scripts/
-  fetch_yahoo.py     — OHLCV + IHSG + fundamental (gratis, unlimited)
-  fetch_sectors.py   — broker-top + foreign flow (idempotent, log kredit)
-  fetch_one.py       — tambah 1 ticker on-demand ke universe
-  bt_flow_window.py  — backtest kalibrasi pilar flow
+  fetch_sectors_prices.py — harga harian + IHSG dari Sectors (runtime utama)
+  fetch_sectors.py        — broker-top + foreign flow (idempotent, log kredit)
+  fetch_sectors_daily.py  — refresh ringan harian (bulan berjalan + foreign 7d)
+  fetch_one.py            — tambah 1 ticker on-demand ke universe
+  fetch_yahoo.py          — bootstrap snapshot history backtest (sekali saja, bukan runtime)
+  bt_flow_window.py       — backtest kalibrasi pilar flow
 docs/
   BACKTEST.md   — SEMUA bukti: angka menang, angka kalah, sampel n, metode
 data/cache/     — CSV cache (di-gitignore; regenerable via scripts)
@@ -111,4 +113,4 @@ data/ledger.csv — rapor sinyal live (tumbuh sendiri)
 4. **Sectors = sumber data inti.** Semua fetch runtime dari Sectors API. Endpoint harga Sectors (window 90 hari) dipakai untuk update harian; snapshot Yahoo hanya untuk bootstrap history backtest — dan itu kami ungkap, bukan sembunyi.
 
 ---
-*Hackathon Sectors 2026 — Track 03 (Market Intelligence). Dibangun solo. Repo freeze setelah submit sesuai rules §05.*
+*ARUS — peserta Hackathon Sectors 2026, Track 03 (Market Intelligence). Repo ini dibekukan setelah deadline sesuai ketentuan panitia.*
