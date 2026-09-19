@@ -52,8 +52,11 @@ th{color:#8b949e;font-size:12px;text-transform:uppercase}
 .score{font-weight:700;font-size:15px}.pill{padding:2px 8px;border-radius:10px;font-size:11px}
 .g{background:#1b4332;color:#95d5b2}.r{background:#4a1525;color:#f4a6b8}.m{background:#30363d;color:#c9d1d9}
 .foot{margin-top:18px;color:#8b949e;font-size:12px;border-top:1px solid #21262d;padding-top:10px}
-.bar{height:6px;border-radius:3px;background:#30363d;width:90px;display:inline-block;vertical-align:middle}
-.fill{height:6px;border-radius:3px;background:#58a6ff}
+.bar{height:8px;border-radius:4px;background:#30363d;width:80px;display:inline-block;vertical-align:middle;position:relative;margin-right:6px}
+.fill{height:8px;border-radius:4px;display:block}
+.f-hi{background:#2ea043}.f-mid{background:#d29922}.f-lo{background:#da3633}.f-na{background:#30363d}
+.pct{font-size:11px;color:#8b949e;vertical-align:middle}
+.pill-hi{color:#95d5b2;font-weight:600}.pill-mid{color:#e3b341;font-weight:600}.pill-lo{color:#f4a6b8;font-weight:600}
 </style></head><body>
 <h1>ARUS</h1>
 <div class="sub">Screener IDX 3 pilar — momentum &times; fundamental &times; aliran dana (Sectors API). Data per <span id=asof></span></div>
@@ -68,7 +71,7 @@ document.getElementById('asof').textContent=d.asof;
 const rg=document.getElementById('regime');rg.textContent=d.regime==='UP'?'IHSG regime: UP — scanning':'IHSG regime: DOWN — mode tunggu, jangan entry';rg.className='regime '+d.regime;
 document.getElementById('tb').innerHTML=d.rows.map(r=>{
 const st=!r.liquid?'<span class="pill m">SKIP</span>':(d.regime==='DOWN'?'<span class="pill r">WAIT</span>':'<span class="pill g">OK</span>');
-const bar=(v)=>v==null?'—':`<span class=bar><span class=fill style="width:${Math.round(v*100)}%"></span></span> ${v.toFixed(2)}`;
+const bar=(v)=>v==null?'<span class="pill m">n/a</span>':`<span class=bar><span class="fill ${v>=0.6?'f-hi':v>=0.4?'f-mid':'f-lo'}" style="width:${Math.round(v*100)}%"></span></span><span class="pct">${Math.round(v*100)}%</span>`;
 const fg=r.foreign_5d_idrb==null?'—':(r.foreign_5d_idrb>0?`<span class=g>+${r.foreign_5d_idrb}M IDR</span>`:`<span class=r>${r.foreign_5d_idrb}M IDR</span>`);
 return `<tr><td><b>${r.symbol}</b></td><td class=score>${r.score.toFixed(2)}</td><td>${bar(r.momentum)}</td><td>${bar(r.fundamental)}</td><td>${bar(r.flow)}</td><td>${fg}</td><td>${st}</td></tr>`}).join('');
 document.getElementById('ledger').innerHTML='Ledger sinyal flow: '+(d.ledger.n>0?`n=${d.ledger.n}, hit ${(d.ledger.hit*100).toFixed(0)}%, median ${(d.ledger.med*100).toFixed(1)}%`:'n=0 — rapor mulai terisi saat cron live aktif');
