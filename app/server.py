@@ -56,7 +56,10 @@ th:hover{color:#e6e6e6}th.sort-asc::after{content:" ▲"}th.sort-desc::after{con
 .pct{font-size:11px;color:#8b949e;vertical-align:middle}
 .controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:12px;font-size:13px;color:#c9d1d9}
 .controls select{background:#161b22;color:#e6e6e6;border:1px solid #30363d;border-radius:6px;padding:4px 8px}
+.controls input[type=text]{background:#161b22;color:#e6e6e6;border:1px solid #30363d;border-radius:6px;padding:4px 8px;width:110px}
 .controls label{color:#8b949e}
+.star{cursor:pointer;font-size:15px;color:#30363d;user-select:none}
+.star.on{color:#e3b341}
 details{margin:14px 0;color:#c9d1d9;font-size:13px}
 details summary{cursor:pointer;color:#58a6ff;font-weight:600}
 details .x{background:#161b22;border:1px solid #21262d;border-radius:8px;padding:12px 16px;margin-top:8px;line-height:1.6}
@@ -81,9 +84,11 @@ details .x b{color:#e6e6e6}.x .q{color:#79c0ff}.x .a{color:#7ee787}
     <option value="wait">WAIT / SKIP</option>
   </select>
   <label><input type=checkbox id=only-foreign> Hanya asing net-beli 5d</label>
+  <input type=text id=q placeholder="cari saham… (BBCA)">
+  <label><input type=checkbox id=watch> ★ watchlist</label>
 </div>
 <table><thead><tr>
-<th data-k=symbol>Saham</th><th data-k=score>Skor</th><th data-k=momentum>Momentum</th><th data-k=fundamental>Funda</th><th data-k=foreign>Asing 5d</th><th data-k=status>Status</th>
+<th data-k=symbol>Saham</th><th data-k=score>Skor</th><th data-k=momentum>Momentum</th><th data-k=fundamental>Funda</th><th data-k=foreign>Asing 5d</th><th data-k=status>Status</th><th title="klik ★ untuk watchlist">★</th>
 </tr></thead>
 <tbody id=tb></tbody></table>
 <div class=foot id=ledger></div>
@@ -100,7 +105,7 @@ details .x b{color:#e6e6e6}.x .q{color:#79c0ff}.x .a{color:#7ee787}
 </div></details>
 <div class=foot>Skor = ranking probabilitas, bukan prediksi pasti. Backtest momentum+fundamental: IC +0.093 (n=38 rebalance, top&gt;bot 63%). Kolom flow = <b>informasi, bukan sinyal</b> — backtest kami menunjukkan flow belum bisa dipercaya sebagai sinyal (detail di README); tiap sinyal flow dicatat ke ledger dan diukur hasilnya setelah 20 hari. Bukan rekomendasi beli/jual.</div>
 <script>
-let D=null;
+let D=null;let WL=new Set(JSON.parse(localStorage.getItem('arus-watchlist')||'[]'));
 fetch('/api').then(r=>r.json()).then(d=>{D=d;render();});
 function fmtForeign(r){if(r.foreign_5d_idrb==null)return null;const a=Math.abs(r.foreign_5d_idrb);
  const s=a>=1000?(a/1000).toFixed(2)+' T':a.toFixed(0)+' M';return {raw:r.foreign_5d_idrb,txt:(r.foreign_5d_idrb>0?'+':'−')+s+' IDR'};}
@@ -111,11 +116,15 @@ const rg=document.getElementById('regime');rg.textContent=d.regime==='UP'?'IHSG 
 const sort=document.getElementById('sort').value;
 const stat=document.getElementById('stat').value;
 const onlyF=document.getElementById('only-foreign').checked;
+const q=document.getElementById('q').value.trim().toUpperCase();
+const onlyW=document.getElementById('watch').checked;
 const stOf=r=>!r.liquid?'SKIP':(d.regime==='DOWN'?'WAIT':'OK');
 let rows=[...d.rows];
 if(stat==='ok')rows=rows.filter(r=>stOf(r)==='OK');
 if(stat==='wait')rows=rows.filter(r=>stOf(r)!=='OK');
 if(onlyF)rows=rows.filter(r=>r.foreign_5d_idrb!=null&&r.foreign_5d_idrb>0);
+if(q)rows=rows.filter(r=>r.symbol.includes(q));
+if(onlyW)rows=rows.filter(r=>WL.has(r.symbol));
 const key={symbol:r=>r.symbol,score:r=>r.score??-1,momentum:r=>r.momentum??-1,fundamental:r=>r.fundamental??-1,foreign:r=>r.foreign_5d_idrb??-Infinity};
 const dir=sort==='symbol'?1:-1;
 rows.sort((a,b)=>{const ka=key[sort](a),kb=key[sort](b);return ka===kb?0:(ka>kb?dir:-dir);});
@@ -124,10 +133,17 @@ const bar=(v)=>v==null?'<span class="pill m">n/a</span>':`<span class=bar><span 
 document.getElementById('tb').innerHTML=rows.map(r=>{
 const st=stOf(r);const stc=st==='OK'?'g':(st==='WAIT'?'r':'m');
 const f=fmtForeign(r);const fg=f==null?'—':(f.raw>0?`<span class=g>${f.txt}</span>`:`<span class=r>${f.txt}</span>`);
-return `<tr><td><b>${r.symbol}</b></td><td class=score>${(r.score*100).toFixed(0)}</td><td>${bar(r.momentum)}</td><td>${bar(r.fundamental)}</td><td>${fg}</td><td><span class="pill ${stc}">${st}</span></td></tr>`}).join('');
+return `<tr><td><b>${r.symbol}</b></td><td class=score>${(r.score*100).toFixed(0)}</td><td>${bar(r.momentum)}</td><td>${bar(r.fundamental)}</td><td>${fg}</td><td><span class="pill ${stc}">${st}</span></td><td><span class="star ${WL.has(r.symbol)?'on':''}" data-s=${r.symbol}>${WL.has(r.symbol)?'★':'☆'}</span></td></tr>`}).join('');
 document.getElementById('ledger').innerHTML='Ledger sinyal flow: '+(d.ledger.n>0?`n=${d.ledger.n}, hit ${(d.ledger.hit*100).toFixed(0)}%, median ${(d.ledger.med*100).toFixed(1)}%`:'n=0 — rapor mulai terisi saat cron live aktif');
 }
-['sort','stat','only-foreign'].forEach(id=>document.getElementById(id).addEventListener('change',render));
+['sort','stat','only-foreign','watch'].forEach(id=>document.getElementById(id).addEventListener('change',render));
+document.getElementById('q').addEventListener('input',render);
+document.getElementById('tb').addEventListener('click',e=>{
+const s=e.target.closest('.star');if(!s)return;
+const sym=s.dataset.s;
+if(WL.has(sym))WL.delete(sym);else WL.add(sym);
+localStorage.setItem('arus-watchlist',JSON.stringify([...WL]));
+render();});
 </script></body></html>"""
 
 class H(BaseHTTPRequestHandler):
