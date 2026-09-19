@@ -33,13 +33,53 @@ def fundamental_pillar(ohlcv, fund):
         qual = qual - 0.25*(g > 0.8)   # top-decile revenue growth: penalti ringan
     return qual.clip(0, 1)
 
-def flow_pillar(ohlcv, broker_map, foreign):
-    """Kosong sampai key Sectors turun. Kontrak:
-    broker_map[symbol] -> DataFrame[date, broker_code, net_idr, buy_idr, sell_idr]
-    foreign           -> DataFrame[date x symbol] net foreign IDR
-    Faktor: z-score net-buy top-2 broker / avg 60d, konsistensi hari-berturut,
-    konsentrasi pembeli, net foreign 5d z-score. Lihat backtest TODO di backtest.py."""
-    return None  # TODO flow_pillar — implementasi setelah data cache broker ada
+def flow_pillar(ohlcv, broker_map, foreign_map=None):
+    """Pilar flow dari cache Sectors. Bulanan (kalibrasi) + foreign harian (live).
+    Faktor: (a) z-score net top-buyer bulanan vs history saham sendiri,
+            (b) share net-buyer terhadap total dua sisi,
+            (c) z-score net foreign 5d (kalau data hariannya cukup)."""
+    import numpy as np
+    if not broker_map: return None
+    C = pd.DataFrame({t: d.Close for t, d in ohlcv.items()})
+    parts = []
+    for t in C.columns:
+        sym = t.replace('.JK', '')
+        if sym not in broker_map or broker_map[sym] is None or len(broker_map[sym]) == 0:
+            continue
+        b = broker_map[sym]
+        agg = (b[b.side == 'top_buyers'].groupby('month')['net_idr'].sum())
+        tot = (b.groupby('month')[['buy_idr', 'sell_idr']].sum().sum(axis=1))
+        m_z = (agg - agg.mean()) / (agg.std() + 1e-12)
+        sh = (agg / (tot + 1e-12))
+        m_z = m_z.clip(-3, 3) / 3   # -1..1
+        sh = sh.clip(-1, 1)
+        s = pd.concat([m_z, sh], axis=1).mean(axis=1)
+        s.index = pd.to_datetime(s.index + '-28')
+        parts.append(s.rename(t))
+    if not parts: return None
+    fb = pd.concat(parts, axis=1).sort_index()
+    # forward-fill per kolom di grid harian: nilai bulanan berlaku sampai bulan berikut
+    F = fb.reindex(C.index.union(fb.index)).ffill().reindex(C.index)
+    F = F.where(fb.notna().reindex(C.index.union(fb.index)).ffill().reindex(C.index))
+    # komponen foreign 5d z (live), bobot sama dgn broker
+    if foreign_map:
+        fparts = []
+        for t in C.columns:
+            sym = t.replace('.JK', '')
+            if sym not in foreign_map or foreign_map[sym] is None or len(foreign_map[sym]) == 0:
+                continue
+            f = foreign_map[sym]['net_foreign_inflow']
+            f.index = pd.to_datetime(f.index)
+            f5 = f.rolling(5).sum()
+            fz = ((f5 - f5.rolling(120, min_periods=30).mean()) /
+                  (f5.rolling(120, min_periods=30).std() + 1e-12)).clip(-3, 3) / 3
+            fparts.append(fz.rename(t))
+        if fparts:
+            FF = pd.concat(fparts, axis=1).sort_index().reindex(C.index)
+            base = F.notna()            # grid harian hasil ffill bulanan
+            F = 0.6*F.fillna(0).add(0.4*FF.fillna(0), fill_value=0)
+            F = F.where(base | FF.notna())
+    return F.rank(axis=1, pct=True)
 
 def regime(ohlcv, index_close):
     ema = index_close.ewm(span=cfg.REGIME_EMA_SPAN, adjust=False).mean()

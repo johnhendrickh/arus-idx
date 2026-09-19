@@ -4,18 +4,23 @@ import pandas as pd, numpy as np, sys
 from app import config as cfg, io_cache, score as sc, alert
 
 def load_cache():
-    ohlcv = {}
+    ohlcv, broker_map, foreign_map = {}, {}, {}
     for s in cfg.UNIVERSE:
         df = io_cache.read_ohlcv(s+'.JK')
         if df is not None and len(df) > 200: ohlcv[s+'.JK'] = df
+        b = io_cache.read_broker(s)
+        if b is not None: broker_map[s] = b
+        f = io_cache.read_foreign(s)
+        if f is not None: foreign_map[s] = f
     idx = io_cache.read_ohlcv('_JKSE')
-    return ohlcv, (idx.Close if idx is not None else None)
+    return ohlcv, broker_map, foreign_map, (idx.Close if idx is not None else None)
 
 def scan(index_close=None):
-    ohlcv, idx_c = load_cache()
+    ohlcv, broker_map, foreign_map, idx_c = load_cache()
     if not ohlcv: sys.exit('cache kosong — jalankan scripts/fetch_yahoo.py dulu')
     fund = io_cache.read_fund()
-    s = sc.composite(ohlcv, fund, index_close=idx_c)
+    s = sc.composite(ohlcv, fund, broker_map=broker_map or None,
+                     foreign=foreign_map or None, index_close=idx_c)
     if s is None: sys.exit('semua pilar kosong')
     last = s.iloc[-1].dropna().sort_values(ascending=False)
     floor = sc.liquidity_floor(ohlcv).iloc[-1]
