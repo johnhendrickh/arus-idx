@@ -34,7 +34,7 @@ Sectors API v2 (core data source — 100% runtime)
         ├── snapshot historis 5 tahun (statis, hanya utk backtest — lihat catatan)
         └── fundamental tahunan
                        ▼
-     skor = 50% momentum + 30% fundamental + 20% flow
+     skor = 55% momentum + 45% fundamental (+ kolom flow informasional)
      (gate: IHSG > EMA50; floor: likuiditas 20-hari)
                        ▼
    ┌───────────────┬────────────────┬──────────────────┐
@@ -52,9 +52,9 @@ Sectors API v2 (core data source — 100% runtime)
 
 ## Skor 3 pilar
 
-1. **Momentum berkualitas (50%)** — `0.5×rank(consensus mom20/60/120) + 0.5×rank(mom60/vol20)`. Backtest 5 tahun (2021–2026, fee 0.4% + slip 0.2%, entry T+1): **IC +0.093, t=8.7, top-5 vs bottom-5 menang 24/38 (63%)**.
-2. **Fundamental (30%)** — ROE (bobot utama) + E/P bonus + **penalti revenue growth tinggi** (growth-trap terbukti di IDX: growth IC −0.102). Combo dengan momentum: IC +0.114, top>bot 77% (caveat: fundamental tahunan, n≈22 rebalance).
-3. **Flow (20%)** — z-score net akumulasi broker top (bulanan) + z-score net foreign 5 hari. **Jujur: versi kalibrasi 19 bulan TIDAK prediktif** (IC +0.026; saat regime ON malah −0.147). Karena itu bobotnya kecil, posisinya *alert kontekstual*, dan tiap sinyal dicatat ke ledger yang mengukur hasilnya sendiri. Rapor flow tumbuh dari data live — bukan klaim.
+1. **Momentum berkualitas (55%)** — `0.5×rank(consensus mom20/60/120) + 0.5×rank(mom60/vol20)`. Backtest 5 tahun (2021–2026, fee 0.4% + slip 0.2%, entry T+1): **IC +0.093, t=8.7, top-5 vs bottom-5 menang 24/38 (63%)**.
+2. **Fundamental (45%)** — ROE (bobot utama) + E/P bonus + **penalti revenue growth tinggi** (growth-trap terbukti di IDX: growth IC −0.102). Combo dengan momentum: IC +0.114, top>bot 77% (caveat: fundamental tahunan, n≈22 rebalance).
+3. **Flow — informasi, bukan sinyal.** Net asing 5 hari + arah akumulasi broker-top bulanan, ditampilkan apa adanya di kolom tersendiri. **Kami menguji flow sebagai sinyal dan hasilnya negatif**: z-score IC +0.021, streak −0.000, divergensi +0.007 (semua noise, n=220); veto OR menandai 20/21 saham saat market jelek; veto AND malah kontrarian (+2.0% untuk saham yang di-flag). Karena itu flow tidak masuk skor dan tidak mem-veto — perannya transparansi: pemakai lihat arus dana asli sambil tahu itu belum terbukti prediktif. Rapor flow ditumbuhkan dari ledger live (tiap sinyal diukur 20 hari), bukan dari klaim.
 
 **Kegagalan yang kami dokumentasikan (bukan disembunyikan):** bandarmology price-only IC +0.010 (noise), RSI dip-buy median −0.8%/trade, porting strategi crypto −14%/yr di IDX. Lengkap di `docs/BACKTEST.md`.
 

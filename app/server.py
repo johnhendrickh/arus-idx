@@ -16,9 +16,7 @@ def build_rows():
     reg_on = bool(sc.regime(ohlcv, idx).iloc[-1])
     pm = sc.momentum_pillar(ohlcv).iloc[-1]
     pf = sc.fundamental_pillar(ohlcv, fund).iloc[-1] if fund is not None else None
-    pw = sc.flow_pillar(ohlcv, bm, fm)
-    pw = pw.iloc[-1] if pw is not None else None
-    # konteks flow per saham (untuk catatan alert)
+    # konteks flow per saham (informasi murni, tidak masuk skor)
     fnotes = {}
     for s in fm:
         f = fm[s]
@@ -31,7 +29,6 @@ def build_rows():
             'symbol': t.replace('.JK',''), 'score': round(float(v), 2),
             'momentum': round(float(pm.get(t, np.nan)), 2) if pd.notna(pm.get(t)) else None,
             'fundamental': round(float(pf.get(t, np.nan)), 2) if pf is not None and pd.notna(pf.get(t)) else None,
-            'flow': round(float(pw.get(t, np.nan)), 2) if pw is not None and pd.notna(pw.get(t)) else None,
             'liquid': bool(floor.get(t, False)),
             'foreign_5d_idrb': fnotes.get(t),
         })
@@ -61,10 +58,10 @@ th{color:#8b949e;font-size:12px;text-transform:uppercase}
 <h1>ARUS</h1>
 <div class="sub">Screener IDX 3 pilar — momentum &times; fundamental &times; aliran dana (Sectors API). Data per <span id=asof></span></div>
 <div id=regime class="regime"></div>
-<table><thead><tr><th>Saham</th><th>Skor</th><th>Momentum</th><th>Funda</th><th>Flow</th><th>Asing 5d</th><th>Status</th></tr></thead>
+<table><thead><tr><th>Saham</th><th>Skor</th><th>Momentum</th><th>Funda</th><th>Asing 5d</th><th>Status</th></tr></thead>
 <tbody id=tb></tbody></table>
 <div class=foot id=ledger></div>
-<div class=foot>Skor = ranking probabilitas, bukan prediksi pasti. Backtest momentum+fundamental: IC +0.093 (n=38 rebalance, top&gt;bot 63%). Pilar flow <b>belum teruji</b> (kalibrasi 19 bln tidak prediktif) — tiap sinyal flow dicatat ke ledger dan diukur hasilnya. Bukan rekomendasi beli/jual.</div>
+<div class=foot>Skor = ranking probabilitas, bukan prediksi pasti. Backtest momentum+fundamental: IC +0.093 (n=38 rebalance, top&gt;bot 63%). Kolom flow = <b>informasi, bukan sinyal</b> — backtest kami menunjukkan flow belum bisa dipercaya sebagai sinyal (detail di README); tiap sinyal flow dicatat ke ledger dan diukur hasilnya setelah 20 hari. Bukan rekomendasi beli/jual.</div>
 <script>
 fetch('/api').then(r=>r.json()).then(d=>{
 document.getElementById('asof').textContent=d.asof;
@@ -73,7 +70,7 @@ document.getElementById('tb').innerHTML=d.rows.map(r=>{
 const st=!r.liquid?'<span class="pill m">SKIP</span>':(d.regime==='DOWN'?'<span class="pill r">WAIT</span>':'<span class="pill g">OK</span>');
 const bar=(v)=>v==null?'<span class="pill m">n/a</span>':`<span class=bar><span class="fill ${v>=0.6?'f-hi':v>=0.4?'f-mid':'f-lo'}" style="width:${Math.round(v*100)}%"></span></span><span class="pct">${Math.round(v*100)}%</span>`;
 const fg=r.foreign_5d_idrb==null?'—':(r.foreign_5d_idrb>0?`<span class=g>+${r.foreign_5d_idrb}M IDR</span>`:`<span class=r>${r.foreign_5d_idrb}M IDR</span>`);
-return `<tr><td><b>${r.symbol}</b></td><td class=score>${r.score.toFixed(2)}</td><td>${bar(r.momentum)}</td><td>${bar(r.fundamental)}</td><td>${bar(r.flow)}</td><td>${fg}</td><td>${st}</td></tr>`}).join('');
+return `<tr><td><b>${r.symbol}</b></td><td class=score>${r.score.toFixed(2)}</td><td>${bar(r.momentum)}</td><td>${bar(r.fundamental)}</td><td>${fg}</td><td>${st}</td></tr>`}).join('');
 document.getElementById('ledger').innerHTML='Ledger sinyal flow: '+(d.ledger.n>0?`n=${d.ledger.n}, hit ${(d.ledger.hit*100).toFixed(0)}%, median ${(d.ledger.med*100).toFixed(1)}%`:'n=0 — rapor mulai terisi saat cron live aktif');
 });</script></body></html>"""
 
