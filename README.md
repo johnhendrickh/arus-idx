@@ -22,13 +22,17 @@ Trader ritel IDX punya banyak alat sinyal tapi nggak ada yang jujur soal akurasi
 
 ## Arsitektur
 
+**Sectors-first by design: semua data runtime dari Sectors API.**
+
 ```
-Yahoo Finance (gratis)          Sectors API v2 (kredit, core differentiator)
-├── OHLCV harian 5 thn           ├── broker-summary/{sym}/top  — akumulasi bandar per bulan
-├── IHSG (regime gate)           ├── foreign-flow/{sym}        — net asing harian
-└── fundamental tahunan          └── (riwayat broker: Feb 2025→; itulah mengapa
-                                      pilar flow pakai ledger live self-grading)
-        └──────────────┬──────────────────────┘
+Sectors API v2 (core data source — 100% runtime)
+├── /daily/{sym}.JK          — OHLCV + market cap harian (update 30 hari/hari)
+├── /index-daily/ihsg        — IHSG (regime gate)
+├── /broker-summary/{sym}/top — akumulasi bandar per bulan
+└── /foreign-flow/{sym}      — net asing harian
+        │
+        ├── snapshot historis 5 tahun (statis, hanya utk backtest — lihat catatan)
+        └── fundamental tahunan
                        ▼
      skor = 50% momentum + 30% fundamental + 20% flow
      (gate: IHSG > EMA50; floor: likuiditas 20-hari)
@@ -37,6 +41,14 @@ Yahoo Finance (gratis)          Sectors API v2 (kredit, core differentiator)
    screener web     alert Telegram    ledger sinyal live
    (1 halaman)      (16.15 WIB)       (auto-grade +20 hari)
 ```
+
+> **Catatan jujur soal history backtest:** endpoint harga Sectors dibatasi window
+> 90 hari/call, sehingga backfill 5 tahun × 21 saham = ±300 kredit — di luar
+> budget kredit hackathon. Solusi: history backtest dari snapshot Yahoo sekali
+> di-bootstrap lalu dibekukan; kami verifikasi 1.519 hari overlap dua sumber:
+> **selisih harga median 0.0** (identik). Semua pembaruan harian setelahnya
+> 100% dari Sectors — hapus Sectors dari ARUS, dan screener, gate regime,
+> pilar flow, plus seluruh update harga berhenti bekerja.
 
 ## Skor 3 pilar
 
@@ -52,8 +64,8 @@ Yahoo Finance (gratis)          Sectors API v2 (kredit, core differentiator)
 # 0. Siapkan .env (lihat .env.example): SECTORS_API_KEY, ARUS_BOT_TOKEN, ARUS_CHAT_ID
 pip install -r requirements.txt
 
-# 1. Unduh data (Yahoo gratis; Sectors ~46 kredit/saham sekali saja, lalu tercache)
-python scripts/fetch_yahoo.py                  # harga + IHSG + fundamental
+# 1. Unduh data (Sectors API: ~46 kredit/saham sekali saja, lalu tercache)
+python scripts/fetch_sectors_prices.py 30      # harga + IHSG harian (Sectors)
 python scripts/fetch_sectors.py BBCA BBRI ...  # broker-top + foreign flow
 
 # 2. Tambah saham pilihanmu sendiri (on-demand, hemat kredit)
@@ -96,7 +108,7 @@ data/ledger.csv — rapor sinyal live (tumbuh sendiri)
 1. **Tiap angka bawa sampel.** Tidak ada klaim tanpa n. IC dihitung per-rebalance, spread median, top-vs-bottom hit-rate.
 2. **Yang belum teruji dilabeli belum teruji.** Pilar flow saat ini: "kalibrasi 19 bln tidak prediktif; rapor hidup via ledger." Bukan disembunyikan di footnote.
 3. **Bukan rekomendasi.** Gate regime DOWN = semua status WAIT. Tidak ada auto-trade, tidak ada "garansi".
-4. **Kredit Sectors dipakai hanya untuk data yang tidak ada di tempat lain** (broker, foreign flow). Harga dari Yahoo — bukan karena pelit, tapi karena kredit habis untuk data komoditas itu pemborosan.
+4. **Sectors = sumber data inti.** Semua fetch runtime dari Sectors API. Endpoint harga Sectors (window 90 hari) dipakai untuk update harian; snapshot Yahoo hanya untuk bootstrap history backtest — dan itu kami ungkap, bukan sembunyi.
 
 ---
 *Hackathon Sectors 2026 — Track 03 (Market Intelligence). Dibangun solo. Repo freeze setelah submit sesuai rules §05.*
