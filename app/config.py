@@ -33,4 +33,4 @@ HOLD_D = 20
 
 # output
 MIN_SAMPLE_LABEL = 15          # n < ini -> "belum teruji"
-TELEGRAM_ENABLED = False       # flip manual; alert jangan auto-order apa pun
+TELEGRAM_ENABLED = True        # aktif 19 Sep — /start sudah dikirim, trigger manual verified. Alert tidak pernah meng-order apa pun.

@@ -9,7 +9,7 @@ def format_alert(rows, regime_up):
     for t, v, st in rows[:5]:
         if st.startswith('SKIP'): continue
         lines.append(f'{t.replace(".JK","")}  {v:.2f}  {st}')
-    lines += ['', 'Skor = momentum+fundamental+flow. Bukan rekomendasi beli/jual.']
+    lines += ['', 'Skor = momentum 55% + fundamental 45% (kolom flow = informasi). Bukan rekomendasi beli/jual.']
     return '\n'.join(lines)
 
 def send(msg):
