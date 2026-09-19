@@ -85,8 +85,10 @@ details .x b{color:#e6e6e6}.x .q{color:#79c0ff}.x .a{color:#7ee787}
   </select>
   <label><input type=checkbox id=only-foreign> Hanya asing net-beli 5d</label>
   <input type=text id=q placeholder="cari saham… (BBCA)">
+  <button id=lookup-btn style="background:#21262d;color:#58a6ff;border:1px solid #30363d;border-radius:6px;padding:4px 10px;cursor:pointer">analisis</button>
   <label><input type=checkbox id=watch> ★ watchlist</label>
 </div>
+<div id=lookup-box style="display:none;background:#161b22;border:1px solid #30363d;border-radius:8px;padding:12px 16px;margin-bottom:12px;font-size:13px"></div>
 <table><thead><tr>
 <th data-k=symbol>Saham</th><th data-k=score>Skor</th><th data-k=momentum>Momentum</th><th data-k=fundamental>Funda</th><th data-k=foreign>Asing 5d</th><th data-k=status>Status</th><th title="klik ★ untuk watchlist">★</th>
 </tr></thead>
@@ -138,6 +140,19 @@ document.getElementById('ledger').innerHTML='Ledger sinyal flow: '+(d.ledger.n>0
 }
 ['sort','stat','only-foreign','watch'].forEach(id=>document.getElementById(id).addEventListener('change',render));
 document.getElementById('q').addEventListener('input',render);
+document.getElementById('lookup-btn').addEventListener('click',async()=>{
+const sym=document.getElementById('q').value.trim().toUpperCase();
+const box=document.getElementById('lookup-box');
+if(!sym){box.style.display='none';return;}
+box.style.display='block';box.innerHTML='menganalisis '+sym+'… (harga Sectors + fundamental, ~2–4 kredit)';
+try{
+const r=await fetch('/lookup?s='+encodeURIComponent(sym)).then(r=>r.json());
+if(!r.ok){box.innerHTML='<b>'+sym+'</b>: '+r.error;return;}
+const x=r.result;
+const pct=v=>v==null?'n/a':(v*100).toFixed(0)+'%';
+box.innerHTML='<b style="font-size:15px">'+x.symbol+'</b> — skor <b>'+(x.score!=null?(x.score*100).toFixed(0):'n/a')+'</b> (persentil vs 21 saham universe) · momentum '+pct(x.momentum_pct)+' · fundamental '+pct(x.fundamental_pct)+' · '+x.bars+' bar harga<div style="color:#8b949e;margin-top:6px">Saham di luar universe kurasi. '+x.note+'. Biaya: '+x.spent+' kredit.</div>';
+}catch(e){box.innerHTML='lookup gagal: '+e;}
+});
 document.getElementById('tb').addEventListener('click',e=>{
 const s=e.target.closest('.star');if(!s)return;
 const sym=s.dataset.s;
@@ -151,6 +166,17 @@ class H(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == '/api':
             body = json.dumps(build_rows()).encode()
+            self.send_response(200); self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', str(len(body))); self.end_headers(); self.wfile.write(body)
+        elif self.path.startswith('/lookup?'):
+            from urllib.parse import parse_qs, urlparse
+            sym = (parse_qs(urlparse(self.path).query).get('s') or [''])[0]
+            from scripts.lookup import lookup
+            try:
+                res, spent, err = lookup(sym)
+            except Exception as e:
+                res, err = None, str(e)[:120]
+            body = json.dumps({'ok': err is None, 'result': res, 'error': err}).encode()
             self.send_response(200); self.send_header('Content-Type', 'application/json')
             self.send_header('Content-Length', str(len(body))); self.end_headers(); self.wfile.write(body)
         else:
