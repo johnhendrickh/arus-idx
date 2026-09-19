@@ -1,5 +1,5 @@
 """config.py — satu sumber kebenaran parameter."""
-UNIVERSE = ['BBCA','BBRI','BMRI','BBNI','TLKM','ASII','UNVR','ICBP',
+UNIVERSE = ['MEDC', 'BBCA','BBRI','BMRI','BBNI','TLKM','ASII','UNVR','ICBP',
             'ADRO','ANTM','PTBA','ITMG','SMGR','INTP','AKRA','TPIA',
             'BRPT','SILO','BUVA','PGEO']
 

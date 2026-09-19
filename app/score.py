@@ -98,8 +98,15 @@ def composite(ohlcv, fund, broker_map=None, foreign=None, index_close=None):
     parts, ws = [], []
     for p, k in [(p_m,'momentum'), (p_f,'fundamental'), (p_w,'flow')]:
         if p is not None:
-            parts.append(p*cfg.WEIGHTS[k]); ws.append(cfg.WEIGHTS[k])
-    score = sum(parts)/sum(ws)
+            parts.append(p.reindex_like(p_m)); ws.append(cfg.WEIGHTS[k])
+    # weighted mean nan-aware: saham tanpa data satu pilar tetap dihitung dari pilar lain
+    num = pd.DataFrame(0.0, index=p_m.index, columns=p_m.columns)
+    den = pd.DataFrame(0.0, index=p_m.index, columns=p_m.columns)
+    for p, w in zip(parts, ws):
+        num = num.add(p.fillna(0)*w, fill_value=0)
+        den = den.add(p.notna().astype(float)*w, fill_value=0)
+    score = num.div(den.where(den > 0))
+    score = score.where(p_m.notna())   # harga stale (momentum NaN) = tidak diskor, jangan skor flow-only
     if index_close is not None:
         score = score.where(regime(ohlcv, index_close), score)  # gate -> status, bukan nol
     return score
