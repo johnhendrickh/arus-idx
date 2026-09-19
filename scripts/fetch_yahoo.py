@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""fetch_yahoo.py — bulk download OHLCV + fundamentals -> cache CSV. Jalankan 1x/hari."""
+"""fetch_yahoo.py — bootstrap snapshot history 5 tahun (OHLCV + fundamentals) -> cache CSV.
+BUKAN bagian runtime: hanya dijalankan sekali saat setup/refresh backtest.
+Update harian produksi 100% dari Sectors API (scripts/fetch_sectors_prices.py)."""
 import sys, os; sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import yfinance as yf, pandas as pd, warnings
 warnings.filterwarnings('ignore')

@@ -17,7 +17,7 @@ def load_cache():
 
 def scan(index_close=None):
     ohlcv, broker_map, foreign_map, idx_c = load_cache()
-    if not ohlcv: sys.exit('cache kosong — jalankan scripts/fetch_yahoo.py dulu')
+    if not ohlcv: sys.exit('cache kosong — jalankan scripts/fetch_sectors_prices.py dulu')
     fund = io_cache.read_fund()
     s = sc.composite(ohlcv, fund, broker_map=broker_map or None,
                      foreign=foreign_map or None, index_close=idx_c)
