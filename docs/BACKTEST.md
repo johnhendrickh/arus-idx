@@ -20,6 +20,18 @@ Run: 2026-09-15, script @ ~/idx-backtest (eksperimen pra-repo; dipindah ke app/b
 4. combo 3 pilar vs 2 pilar (naik tidak IC-nya?)
 5. riwayat broker-summary bisa mundur berapa tahun (n efektif dipangkas!)
 
+## Pilar flow (Sectors, kalibrasi Sep 2026 — window Feb 2025→Sep 2026, 19 bln, n=18)
+| Setup | IC | top>bot | med spread |
+|---|---|---|---|
+| Flow mentah (broker-top z + foreign 5d z) | +0.026 (t=0.4) | 33% | -1.9% |
+| Flow saat regime ON | **-0.147 (t=-3.1)** | 11% | -5.1% |
+| Combo mom+flow | +0.054 | 67% | +1.1% |
+
+Kesimpulan: flow mentah TIDAK prediktif dalam window teruji. Keputusan:
+bobot flow 0.30 → 0.20, diposisikan sebagai alert kontekstual ("dicatat ke ledger"),
+bukan klaim akurasi. Angka akan ditinjau ulang saat ledger hidup >20 sinyal.
+Credit terpakai total: 846/1000 (log: data/fetch.log).
+
 ## Aturan pelaporan
 - Selalu split 2021-23 vs 2024-26. Selalu tampilkan n.
 - n<15 → label "belum teruji" di produk.

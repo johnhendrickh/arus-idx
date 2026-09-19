@@ -7,8 +7,9 @@ UNIVERSE = ['BBCA','BBRI','BMRI','BBNI','TLKM','ASII','UNVR','ICBP',
 REGIME_EMA_SPAN = 100        # ~EMA50 harian (span Yahoo weekly-proxy; kalibrasi saat dev)
 LIQ_FLOOR_PCT = 0.2          # skip kuintil likuiditas terbawah
 
-# bobot pilar (direnormalisasi bila pilar tanpa data)
-WEIGHTS = {'momentum': 0.45, 'fundamental': 0.25, 'flow': 0.30}
+# bobot pilar — hasil kalibrasi Sep 2026: flow mentah tidak prediktif (IC+0.026, n=18;
+# saat regime ON malah -0.147). Flow turun jadi 0.20, posisinya alert kontekstual.
+WEIGHTS = {'momentum': 0.50, 'fundamental': 0.30, 'flow': 0.20}
 
 # momentum (hasil riset 15 Sep — varian #6 menang)
 MOM_HORIZONS = [20, 60, 120]   # consensus "semua arah naik"
