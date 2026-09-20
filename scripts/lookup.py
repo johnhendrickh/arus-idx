@@ -36,8 +36,10 @@ def lookup(symbol, max_spend=3):
         return None, spent, f'{symbol}: data harga tidak cukup ({0 if ohl is None else len(ohl)} bar) — ticker salah/delisted/listing baru'
     # ---- 2. fundamental: Yahoo gratis (ROE, laba) ----
     fund_rows = []
+    name = symbol
     try:
         tk = yf.Ticker(t)
+        name = tk.info.get('longName') or tk.info.get('shortName') or symbol
         ins, bs = tk.income_stmt, tk.balance_sheet
         ni = ins.loc['Net Income Common Stockholders']; rv = ins.loc['Total Revenue']
         eq = bs.loc['Stockholders Equity']
@@ -62,6 +64,7 @@ def lookup(symbol, max_spend=3):
             f_pct = p_f[t].iloc[-1] if pd.notna(p_f[t].iloc[-1]) else None
         except Exception:
             pass
+    spark = [round(float(x), 2) for x in ohl['Close'].tail(60).tolist()]
     return {
         'symbol': symbol,
         'bars': len(ohl),
@@ -69,6 +72,8 @@ def lookup(symbol, max_spend=3):
         'fundamental_pct': f_pct,
         'score': round(0.55*uni_mom + 0.45*f_pct, 3) if (uni_mom is not None and f_pct is not None) else uni_mom,
         'spent': spent,
+        'spark': spark,
+        'name': name,
         'note': 'skor persentil vs 21 saham universe; broker/asing tidak diambil (biaya 46 kredit) — kolom flow n/a',
     }, spent, None
 

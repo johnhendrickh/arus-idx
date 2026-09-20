@@ -132,6 +132,7 @@ const dir=sort==='symbol'?1:-1;
 rows.sort((a,b)=>{const ka=key[sort](a),kb=key[sort](b);return ka===kb?0:(ka>kb?dir:-dir);});
 document.querySelectorAll('th').forEach(th=>{th.className=th.dataset.k===sort?(dir===1?'sort-asc':'sort-desc'):'';});
 const bar=(v)=>v==null?'<span class="pill m">n/a</span>':`<span class=bar><span class="fill ${v>=0.6?'f-hi':v>=0.4?'f-mid':'f-lo'}" style="width:${Math.round(v*100)}%"></span></span><span class="pct">${Math.round(v*100)}%</span>`;
+window.pbar=bar;
 document.getElementById('tb').innerHTML=rows.map(r=>{
 const st=stOf(r);const stc=st==='OK'?'g':(st==='WAIT'?'r':'m');
 const f=fmtForeign(r);const fg=f==null?'—':(f.raw>0?`<span class=g>${f.txt}</span>`:`<span class=r>${f.txt}</span>`);
@@ -150,7 +151,19 @@ const r=await fetch('/lookup?s='+encodeURIComponent(sym)).then(r=>r.json());
 if(!r.ok){box.innerHTML='<b>'+sym+'</b>: '+r.error;return;}
 const x=r.result;
 const pct=v=>v==null?'n/a':(v*100).toFixed(0)+'%';
-box.innerHTML='<b style="font-size:15px">'+x.symbol+'</b> — skor <b>'+(x.score!=null?(x.score*100).toFixed(0):'n/a')+'</b> (persentil vs 21 saham universe) · momentum '+pct(x.momentum_pct)+' · fundamental '+pct(x.fundamental_pct)+' · '+x.bars+' bar harga<div style="color:#8b949e;margin-top:6px">Saham di luar universe kurasi. '+x.note+'. Biaya: '+x.spent+' kredit.</div>';
+const spark=x.spark||[];
+const w=220,h=44;
+const mn=Math.min(...spark),mx=Math.max(...spark),rg=(mx-mn)||1;
+const pts=spark.map((v,i)=>`${(i/(spark.length-1||1)*w).toFixed(1)},${(h-4-(v-mn)/rg*(h-8)).toFixed(1)}`).join(' ');
+const up=spark.length>1&&spark[spark.length-1]>=spark[0];
+const col=x.score==null?'#8b949e':(x.score>=0.6?'#3fb950':(x.score>=0.4?'#d29922':'#f85149'));
+box.innerHTML=`<div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">
+<div style="flex:1;min-width:200px"><b style="font-size:16px">${x.symbol}</b> <span style="color:#8b949e">${x.name}</span><div style="margin:8px 0;font-size:26px;color:${col}"><b>${x.score!=null?(x.score*100).toFixed(0):'n/a'}</b><span style="font-size:13px;color:#8b949e"> /100</span></div>
+<div style="font-size:12px;color:#c9d1d9">momentum ${pct(x.momentum_pct)} ${window.pbar(x.momentum_pct)}</div>
+<div style="font-size:12px;color:#c9d1d9;margin-top:4px">fundamental ${pct(x.fundamental_pct)} ${window.pbar(x.fundamental_pct)}</div></div>
+<div style="text-align:center"><svg width="${w}" height="${h}" style="display:block"><polyline fill="none" stroke="${up?'#3fb950':'#f85149'}" stroke-width="2" points="${pts}"/></svg><div style="font-size:11px;color:#8b949e">60 hari terakhir${up?' ▲':' ▼'}</div></div>
+</div>
+<div style="color:#8b949e;margin-top:8px;font-size:12px">${x.bars} bar harga · skor = persentil vs 21 saham universe · ${x.note}. Biaya: ${x.spent} kredit.</div>`;
 }catch(e){box.innerHTML='lookup gagal: '+e;}
 });
 document.getElementById('tb').addEventListener('click',e=>{
