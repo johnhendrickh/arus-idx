@@ -14,6 +14,10 @@ def build_rows():
     last = comp.iloc[-1]
     floor = sc.liquidity_floor(ohlcv).iloc[-1]
     reg_on = bool(sc.regime(ohlcv, idx).iloc[-1]) if idx is not None else False  # fail-CLOSED
+    margin = None
+    if idx is not None:
+        _ema = idx.ewm(span=cfg.REGIME_EMA_SPAN, adjust=False).mean().iloc[-1]
+        margin = round(float(idx.iloc[-1]/_ema - 1)*100, 1)
     pm = sc.momentum_pillar(ohlcv).iloc[-1]
     pf = sc.fundamental_pillar(ohlcv, fund).iloc[-1] if fund is not None else None
     # konteks flow per saham (informasi murni, tidak masuk skor)
@@ -33,7 +37,7 @@ def build_rows():
             'foreign_5d_idrb': fnotes.get(t),
         })
     led = ledger.stats('flow_alert') or {'n': 0}
-    return {'regime': 'UP' if reg_on else 'DOWN', 'asof': str(comp.index[-1].date()),
+    return {'regime': 'UP' if reg_on else 'DOWN', 'regime_margin_pct': margin, 'asof': str(comp.index[-1].date()),
             'rows': rows, 'ledger': led}
 
 PAGE = """<!doctype html><html><head><meta charset="utf-8">
@@ -114,7 +118,7 @@ function fmtForeign(r){if(r.foreign_5d_idrb==null)return null;const a=Math.abs(r
 function render(){
 const d=D;
 document.getElementById('asof').textContent=d.asof;
-const rg=document.getElementById('regime');rg.textContent=d.regime==='UP'?'IHSG regime: UP — scanning':'IHSG regime: DOWN — mode tunggu, jangan entry';rg.className='regime '+d.regime;
+const rg=document.getElementById('regime');const mg=d.regime_margin_pct!=null?` (${d.regime_margin_pct>=0?'+':''}${d.regime_margin_pct}% vs EMA50)`:'';rg.textContent=d.regime==='UP'?`IHSG regime: UP${mg} — scanning`:`IHSG regime: DOWN${mg} — mode tunggu, jangan entry`;rg.className='regime '+d.regime;
 const sort=document.getElementById('sort').value;
 const stat=document.getElementById('stat').value;
 const onlyF=document.getElementById('only-foreign').checked;

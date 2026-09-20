@@ -17,9 +17,10 @@ def _env(name):
 BOT = _env('ARUS_BOT_TOKEN')
 CHAT = _env('ARUS_CHAT_ID')
 
-def format_alert(rows, regime_up):
+def format_alert(rows, regime_up, margin_pct=None):
+    m = f' ({margin_pct:+.1f}% vs EMA50)' if margin_pct is not None else ''
     lines = [f"ARUS — {pd.Timestamp.now():%d %b %H:%M} WIB",
-             f"IHSG regime: {'▲ UP' if regime_up else '▼ DOWN — mode tunggu, jangan entry'}", '']
+             f"IHSG regime: {'▲ UP' if regime_up else '▼ DOWN — mode tunggu, jangan entry'}{m}", '']
     for t, v, st in rows[:5]:
         if st.startswith('SKIP'): continue
         lines.append(f'{t.replace(".JK","")}  {v:.2f}  {st}')

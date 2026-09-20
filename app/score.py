@@ -129,8 +129,10 @@ def flow_pillar(ohlcv, broker_map, foreign_map=None):
     return F.rank(axis=1, pct=True)
 
 def regime(ohlcv, index_close):
+    """UP = close > EMA50 + buffer. Deadzone 0..buffer = DOWN (margin tipis =
+    flip-flop harian; lebih aman tunggu konfirmasi)."""
     ema = index_close.ewm(span=cfg.REGIME_EMA_SPAN, adjust=False).mean()
-    return (index_close > ema)
+    return (index_close > ema * (1 + cfg.REGIME_BUFFER))
 
 def liquidity_floor(ohlcv):
     C = pd.DataFrame({t: d.Close for t, d in ohlcv.items()})

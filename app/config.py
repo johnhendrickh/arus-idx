@@ -5,6 +5,7 @@ UNIVERSE = ['MEDC', 'BBCA','BBRI','BMRI','BBNI','TLKM','ASII','UNVR','ICBP',
 
 # gate & floor
 REGIME_EMA_SPAN = 50         # EMA50 harian (data _JKSE daily; span=harus 50, bukan 100)
+REGIME_BUFFER = 0.01         # butuh >1% di atas EMA50 = UP beneran; 0..1% = deadzone (tipis = flip-flop harian)
 LIQ_FLOOR_PCT = 0.2          # skip kuintil likuiditas terbawah
 
 # bobot pilar — flow TIDAK masuk skor dan TIDAK jadi veto (bukti docs/BACKTEST.md:

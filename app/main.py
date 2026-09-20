@@ -63,10 +63,17 @@ def scan_full():
 
 if __name__ == '__main__':
     rows, reg = scan()
-    print(f"ARUS SCAN — {pd.Timestamp.now():%Y-%m-%d %H:%M} WIB | regime IHSG: {'UP' if reg else 'DOWN → mode tunggu'}")
+    # margin IHSG vs EMA50 utk konteks alert
+    _, _, _, idx_c = load_cache()
+    margin = None
+    if idx_c is not None:
+        ema = idx_c.ewm(span=cfg.REGIME_EMA_SPAN, adjust=False).mean().iloc[-1]
+        margin = round(float(idx_c.iloc[-1]/ema - 1)*100, 2)
+    print(f"ARUS SCAN — {pd.Timestamp.now():%Y-%m-%d %H:%M} WIB | regime IHSG: {'UP' if reg else 'DOWN → mode tunggu'}"
+          + (f' | margin {margin:+.2f}%' if margin is not None else ''))
     print('-'*58)
     for t, v, st in rows[:8]:
         print(f'{t.replace(".JK",""):6s} skor {v:.2f}  {st}')
-    msg = alert.format_alert(rows, reg)
+    msg = alert.format_alert(rows, reg, margin)
     print('\n--- alert preview ---\n' + msg)
     if cfg.TELEGRAM_ENABLED: alert.send(msg)
