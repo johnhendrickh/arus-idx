@@ -73,14 +73,8 @@ details .x b{color:#e6e6e6}.x .q{color:#79c0ff}.x .a{color:#7ee787}
 <div class="sub">Screener IDX — momentum &times; fundamental &times; aliran dana (data: Sectors API). Data per <span id=asof></span> · <a href="#cara-baca" style="color:#58a6ff;text-decoration:none">cara baca halaman ini ↓</a></div>
 <div id=regime class="regime"></div>
 <div class="controls">
-  <label>Urutkan:</label>
-  <select id=sort>
-    <option value="score">Skor (gabungan)</option>
-    <option value="momentum">Momentum</option>
-    <option value="fundamental">Fundamental</option>
-    <option value="foreign">Asing 5d (IDR)</option>
-    <option value="symbol">Saham (A-Z)</option>
-  </select>
+  <label title="klik judul kolom tabel untuk mengurutkan ▲▼">Urutkan:</label>
+  <b id=sortlabel>Skor ▼</b>
   <label>Status:</label>
   <select id=stat>
     <option value="">Semua</option>
@@ -94,7 +88,7 @@ details .x b{color:#e6e6e6}.x .q{color:#79c0ff}.x .a{color:#7ee787}
 </div>
 <div id=lookup-box style="display:none;background:#161b22;border:1px solid #30363d;border-radius:8px;padding:12px 16px;margin-bottom:12px;font-size:13px"></div>
 <table><thead><tr>
-<th data-k=symbol>Saham</th><th data-k=score>Skor</th><th data-k=momentum>Momentum</th><th data-k=fundamental>Funda</th><th data-k=foreign>Asing 5d</th><th data-k=status>Status</th><th title="klik ★ untuk watchlist">★</th>
+<th data-k=symbol style="cursor:pointer">Saham</th><th data-k=score style="cursor:pointer">Skor</th><th data-k=momentum style="cursor:pointer">Momentum</th><th data-k=fundamental style="cursor:pointer">Funda</th><th data-k=foreign style="cursor:pointer">Asing 5d</th><th data-k=status>Status</th><th title="klik ★ untuk watchlist">★</th>
 </tr></thead>
 <tbody id=tb></tbody></table>
 <div class=foot id=ledger></div>
@@ -115,11 +109,11 @@ let D=null;let WL=new Set(JSON.parse(localStorage.getItem('arus-watchlist')||'[]
 fetch('/api').then(r=>r.json()).then(d=>{D=d;render();});
 function fmtForeign(r){if(r.foreign_5d_idrb==null)return null;const a=Math.abs(r.foreign_5d_idrb);
  const s=a>=1000?(a/1000).toFixed(2)+' T':a.toFixed(0)+' M';return {raw:r.foreign_5d_idrb,txt:(r.foreign_5d_idrb>0?'+':'−')+s+' IDR'};}
+let SORTK='score',SORTD=-1;   // klik header: kolom, arah (−1 = desc dulu)
 function render(){
 const d=D;
-document.getElementById('asof').textContent=d.asof;
-const rg=document.getElementById('regime');const mg=d.regime_margin_pct!=null?` (${d.regime_margin_pct>=0?'+':''}${d.regime_margin_pct}% vs EMA50)`:'';rg.textContent=d.regime==='UP'?`IHSG regime: UP${mg} — scanning`:`IHSG regime: DOWN${mg} — mode tunggu, jangan entry`;rg.className='regime '+d.regime;
-const sort=document.getElementById('sort').value;
+document.getElementById('asof').textContent=d.asof;const rg=document.getElementById('regime');const mg=d.regime_margin_pct!=null?` (${d.regime_margin_pct>=0?'+':''}${d.regime_margin_pct}% vs EMA50)`:'';rg.textContent=d.regime==='UP'?`IHSG regime: UP${mg} — scanning`:`IHSG regime: DOWN${mg} — mode tunggu, jangan entry`;rg.className='regime '+d.regime;
+const sort=SORTK,sortDir=SORTD;
 const stat=document.getElementById('stat').value;
 const onlyF=document.getElementById('only-foreign').checked;
 const q=document.getElementById('q').value.trim().toUpperCase();
@@ -132,8 +126,10 @@ if(onlyF)rows=rows.filter(r=>r.foreign_5d_idrb!=null&&r.foreign_5d_idrb>0);
 if(q)rows=rows.filter(r=>r.symbol.includes(q));
 if(onlyW)rows=rows.filter(r=>WL.has(r.symbol));
 const key={symbol:r=>r.symbol,score:r=>r.score??-1,momentum:r=>r.momentum??-1,fundamental:r=>r.fundamental??-1,foreign:r=>r.foreign_5d_idrb??-Infinity};
-const dir=sort==='symbol'?1:-1;
+const dir=sort==='symbol'?1:sortDir;
 rows.sort((a,b)=>{const ka=key[sort](a),kb=key[sort](b);return ka===kb?0:(ka>kb?dir:-dir);});
+const KLBL={symbol:'Saham',score:'Skor',momentum:'Momentum',fundamental:'Funda',foreign:'Asing 5d'};
+document.getElementById('sortlabel').textContent=KLBL[sort]+(dir===1?' ▲':' ▼');
 document.querySelectorAll('th').forEach(th=>{th.className=th.dataset.k===sort?(dir===1?'sort-asc':'sort-desc'):'';});
 const bar=(v)=>v==null?'<span class="pill m">n/a</span>':`<span class=bar><span class="fill ${v>=0.6?'f-hi':v>=0.4?'f-mid':'f-lo'}" style="width:${Math.round(v*100)}%"></span></span><span class="pct">${Math.round(v*100)}%</span>`;
 window.pbar=bar;
@@ -143,7 +139,10 @@ const f=fmtForeign(r);const fg=f==null?'—':(f.raw>0?`<span class=g>${f.txt}</s
 return `<tr><td><b>${r.symbol}</b></td><td class=score>${(r.score*100).toFixed(0)}</td><td>${bar(r.momentum)}</td><td>${bar(r.fundamental)}</td><td>${fg}</td><td><span class="pill ${stc}">${st}</span></td><td><span class="star ${WL.has(r.symbol)?'on':''}" data-s=${r.symbol}>${WL.has(r.symbol)?'★':'☆'}</span></td></tr>`}).join('');
 document.getElementById('ledger').innerHTML='Ledger sinyal flow: '+(d.ledger.n>0?`n=${d.ledger.n}, hit ${(d.ledger.hit*100).toFixed(0)}%, median ${(d.ledger.med*100).toFixed(1)}%`:'n=0 — rapor mulai terisi saat cron live aktif');
 }
-['sort','stat','only-foreign','watch'].forEach(id=>document.getElementById(id).addEventListener('change',render));
+['stat','only-foreign','watch'].forEach(id=>document.getElementById(id).addEventListener('change',render));
+document.querySelectorAll('th[data-k]').forEach(th=>th.addEventListener('click',()=>{
+if(SORTK===th.dataset.k)SORTD=-SORTD;else{SORTK=th.dataset.k;SORTD=th.dataset.k==='symbol'?1:-1;}
+render();}));
 document.getElementById('q').addEventListener('input',render);
 document.getElementById('lookup-btn').addEventListener('click',async()=>{
 const sym=document.getElementById('q').value.trim().toUpperCase();
