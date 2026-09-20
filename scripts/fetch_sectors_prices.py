@@ -39,7 +39,7 @@ def fetch_ihsg(days=90):
     df = pd.DataFrame(rows)
     df['Date'] = pd.to_datetime(df['date'])
     df = df.set_index('Date')[['price']].rename(columns={'price': 'Close'})
-    io_cache.write(df, '^JKSE.csv')
+    io_cache.write(df, '_JKSE.csv')   # reader (app/main.py) baca _JKSE — jangan ganti nama satu sisi
     return 1
 
 if __name__ == '__main__':

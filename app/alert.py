@@ -1,7 +1,21 @@
 """alert.py — format pesan + kirim Telegram. Tidak ada aksi trading apa pun."""
 import pandas as pd, requests, os
-BOT = os.getenv('ARUS_BOT_TOKEN', '')
-CHAT = os.getenv('ARUS_CHAT_ID', '')
+
+def _env(name):
+    """Baca dari os.environ dulu; fallback parse .env manual (venv tak punya dotenv)."""
+    v = os.getenv(name, '')
+    if v: return v
+    try:
+        p = os.path.join(os.path.dirname(__file__), '..', '.env')
+        for line in open(p):
+            if line.strip().startswith(name + '='):
+                return line.split('=', 1)[1].strip()
+    except OSError:
+        pass
+    return ''
+
+BOT = _env('ARUS_BOT_TOKEN')
+CHAT = _env('ARUS_CHAT_ID')
 
 def format_alert(rows, regime_up):
     lines = [f"ARUS — {pd.Timestamp.now():%d %b %H:%M} WIB",

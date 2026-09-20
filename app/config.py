@@ -4,7 +4,7 @@ UNIVERSE = ['MEDC', 'BBCA','BBRI','BMRI','BBNI','TLKM','ASII','UNVR','ICBP',
             'BRPT','SILO','BUVA','PGEO']
 
 # gate & floor
-REGIME_EMA_SPAN = 100        # ~EMA50 harian (span Yahoo weekly-proxy; kalibrasi saat dev)
+REGIME_EMA_SPAN = 50         # EMA50 harian (data _JKSE daily; span=harus 50, bukan 100)
 LIQ_FLOOR_PCT = 0.2          # skip kuintil likuiditas terbawah
 
 # bobot pilar — flow TIDAK masuk skor dan TIDAK jadi veto (bukti docs/BACKTEST.md:

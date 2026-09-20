@@ -43,7 +43,10 @@ def scan(index_close=None):
     if s is None: sys.exit('semua pilar kosong')
     last = s.iloc[-1].dropna().sort_values(ascending=False)
     floor = sc.liquidity_floor(ohlcv).iloc[-1]
-    reg = (sc.regime(ohlcv, idx_c).iloc[-1] if idx_c is not None else True)
+    if idx_c is None:
+        reg = False   # fail-CLOSED: tanpa data IHSG jangan pernah label OK
+    else:
+        reg = bool(sc.regime(ohlcv, idx_c).iloc[-1])
     rows = []
     for t, v in last.items():
         if not floor.get(t, True):

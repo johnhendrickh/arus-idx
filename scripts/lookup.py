@@ -16,7 +16,10 @@ from scripts.fetch_sectors_prices import fetch_daily
 ENV = dotenv_values(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 def lookup(symbol, max_spend=3):
-    symbol = symbol.upper().replace('.JK', '').strip()
+    import re as _re
+    symbol = _re.sub(r'[^A-Z0-9]', '', symbol.upper().replace('.JK', ''))
+    if not symbol or len(symbol) > 8:
+        return None, 0, f'{symbol or "(kosong)"}: ticker tidak valid — 1–8 huruf/angka, contoh: BBCA'
     t = symbol + '.JK'
     # ---- 1. harga: cache dulu, baru Sectors (~1 kredit/window 90d, butuh ~120 bar utk mom120) ----
     spent = 0

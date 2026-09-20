@@ -13,7 +13,7 @@ def build_rows():
     comp = sc.composite(ohlcv, fund, broker_map=bm or None, foreign=fm or None, index_close=idx)
     last = comp.iloc[-1]
     floor = sc.liquidity_floor(ohlcv).iloc[-1]
-    reg_on = bool(sc.regime(ohlcv, idx).iloc[-1])
+    reg_on = bool(sc.regime(ohlcv, idx).iloc[-1]) if idx is not None else False  # fail-CLOSED
     pm = sc.momentum_pillar(ohlcv).iloc[-1]
     pf = sc.fundamental_pillar(ohlcv, fund).iloc[-1] if fund is not None else None
     # konteks flow per saham (informasi murni, tidak masuk skor)
@@ -176,12 +176,22 @@ render();});
 
 class H(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
+    _lookup_times = []   # timestamp detik terakhir, utk rate limit
     def do_GET(self):
         if self.path == '/api':
             body = json.dumps(build_rows()).encode()
             self.send_response(200); self.send_header('Content-Type', 'application/json')
             self.send_header('Content-Length', str(len(body))); self.end_headers(); self.wfile.write(body)
         elif self.path.startswith('/lookup?'):
+            import time as _t
+            now = _t.time()
+            H._lookup_times = [x for x in H._lookup_times if now - x < 60]
+            if len(H._lookup_times) >= 5:
+                body = json.dumps({'ok': False, 'result': None, 'error': 'terlalu banyak permintaan — maks 5 lookup/menit'}).encode()
+                self.send_response(429); self.send_header('Content-Type', 'application/json')
+                self.send_header('Content-Length', str(len(body))); self.end_headers(); self.wfile.write(body)
+                return
+            H._lookup_times.append(now)
             from urllib.parse import parse_qs, urlparse
             sym = (parse_qs(urlparse(self.path).query).get('s') or [''])[0]
             from scripts.lookup import lookup
