@@ -139,7 +139,7 @@ Lengkap di `docs/BACKTEST.md`.
 | Web screener | Tiap reload halaman / klik header sort | Refresh skor real-time | 0 (cache only) |
 | Lookup ticker | Klik tombol "Analisis" di search bar | Analisis 1 ticker di luar universe | ~2-4 (cache-first) |
 
-**Cron harian (`~/.hermes/scripts/arus_daily.sh`) — 3 fase:**
+**Cron harian (host crontab, lihat `docs/DEPLOY.md`) — 3 fase:**
 
 ```
 1. FETCH          → Sectors API (~25 kredit/hari, hanya bursa buka)
@@ -261,50 +261,24 @@ scripts/
   fetch_one.py            — tambah 1 ticker on-demand ke universe (~46 kredit)
   lookup.py               — analisis ad-hoc ticker apa pun (~2-4 kredit)
   bt_proxy.py             — backtest gate IHSG-proxy (window panjang)
-  cron/
-    arus_daily.sh         — cron entry point (guard + fetch + alert)
-    arus_crontab          — crontab untuk native cron / Docker
 docs/
   BACKTEST.md   — SEMUA bukti: angka menang, angka kalah, sampel n, metode
-  DEPLOY.md     — 3 metode deploy (Hermes cron / native cron / Docker)
+  DEPLOY.md     — cara deploy: native Python atau Docker
 data/cache/     — CSV cache (di-gitignore; regenerable via scripts)
 data/ledger.csv — rapor sinyal live (tumbuh sendiri)
 ```
 
 ## Deployment
 
-3 metode — pilih sesuai infrastruktur. Detail lengkap: [`docs/DEPLOY.md`](docs/DEPLOY.md).
+Dua cara — keduanya gak butuh AI agent atau service eksternal. Detail
+lengkap: [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
 | Metode | Kapan | Setup |
 |---|---|---|
-| **Hermes cron** (current) | Hackathon demo, Hermes Agent user | `cp scripts/cron/arus_daily.sh ~/.hermes/scripts/` lalu `hermes cron create` |
-| **Native cron** | VPS Linux tanpa Docker | `sudo cp scripts/cron/arus_daily.sh /usr/local/bin/arus-daily` + crontab |
-| **Docker compose** | Cloud, reproducible, portable | `cp .env.example .env` lalu `sudo docker compose up -d --build` |
+| **Native Python** | Dev, laptop, VPS kecil | `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt && .venv/bin/python -m app.server` |
+| **Docker Compose** | Cloud, reproducible | `cp .env.example .env && sudo docker compose up -d --build` |
 
-**TL;DR untuk evaluator:** repo self-contained — `git clone` → isi `.env` → pilih 1 metode di atas.
-
-### Workflow update cron script
-
-Cron script ada di 2 tempat: source-of-truth di repo, eksekusi di host.
-
-```bash
-# 1. Edit source of truth di repo
-$EDITOR scripts/cron/arus_daily.sh
-
-# 2. Commit
-git add scripts/cron/arus_daily.sh && git commit -m "cron: ..."
-
-# 3. Sync ke host (manual, by design)
-# Hermes cron:
-cp scripts/cron/arus_daily.sh ~/.hermes/scripts/arus_daily.sh
-# Native cron:
-sudo cp scripts/cron/arus_daily.sh /usr/local/bin/arus-daily
-# Docker: rebuild image otomatis pick up (no manual sync)
-sudo docker compose build cron && sudo docker compose up -d cron
-```
-
-**Kenapa manual cp (bukan symlink)?** Simpler, gak ada symlink mati kalau repo
-dipindah. Update jarang (~bulanan). Untuk update sering, pakai Docker.
+Cron harian dipasang di **host** (bukan di container) — lihat DEPLOY.md.
 
 
 
@@ -322,5 +296,4 @@ dipindah. Update jarang (~bulanan). Untuk update sering, pakai Docker.
 
 ---
 
-*ARUS — peserta Hackathon Sectors 2026, Track 03 (Market Intelligence).
-Repo ini dibekukan setelah deadline sesuai ketentuan panitia.*
+*ARUS — lihat data, bukan tebakan.*

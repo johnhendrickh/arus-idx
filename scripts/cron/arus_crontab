@@ -1,9 +1,0 @@
-# Crontab untuk ARUS — dijalanin docker-compose service 'cron'.
-# Cron server UTC. Untuk 16:15 WIB = 09:15 UTC (offset +7).
-# Guard 1 (weekend) + Guard 2 (bursa libur) di-handle script arus_daily.sh.
-SHELL=/bin/bash
-PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-TZ=Asia/Jakarta
-
-# m h dom mon dow user command
-15 9 * * 1-5 root /app/scripts/cron/arus_daily.sh >> /var/log/arus/cron.log 2>&1

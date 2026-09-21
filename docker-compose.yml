@@ -9,28 +9,7 @@ services:
     env_file: .env
     volumes:
       - arus-data:/app/data
-      - ./logs:/var/log/arus
     command: ["python", "-m", "app.server"]
-
-  cron:
-    image: arus:local
-    container_name: arus-cron
-    restart: unless-stopped
-    env_file: .env
-    volumes:
-      - arus-data:/app/data
-      - ./scripts/cron/arus_crontab:/tmp/arus_crontab:ro
-      - ./logs:/var/log/arus
-    environment:
-      - TZ=Asia/Jakarta
-    command: >
-      bash -c "
-        mkdir -p /var/log/arus &&
-        cp /tmp/arus_crontab /etc/cron.d/arus &&
-        chmod 0644 /etc/cron.d/arus &&
-        crontab /etc/cron.d/arus &&
-        cron -f
-      "
 
 volumes:
   arus-data:

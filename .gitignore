@@ -1,5 +1,14 @@
 data/cache/
+data/fetch.log
 __pycache__/
 *.pyc
 .env
+.env.local
+.env.*.local
 video/
+logs/
+.DS_Store
+*.swp
+.idea/
+.vscode/
+

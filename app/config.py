@@ -8,8 +8,9 @@ UNIVERSE = 21 saham blue-chip IDX, dipilih manual berdasarkan:
 - Broker summary stabil: ada /broker-summary/ data bulanan (gak IPO baru)
 
 Universe ini STATIS — dipilih sekali saat setup, gak auto-rebalance.
-Alasan: scope hackathon (Track 03 Market Intelligence), coverage > 21
-saham = blow budget kredit (900 IDX × 3 kredit = ~2700/hari bursa).
+Alasan: coverage > 21 saham = blow budget kredit (900 IDX × 3 kredit =
+~2700/hari bursa). Universe sengaja kecil biar score reproducible
+antar-periode.
 
 On-demand ticker management:
 - `python scripts/fetch_one.py MEDC` — tambah saham baru (~46 kredit
