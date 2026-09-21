@@ -1,4 +1,26 @@
-"""config.py — satu sumber kebenaran parameter."""
+"""config.py — satu sumber kebenaran parameter.
+
+UNIVERSE = 21 saham blue-chip IDX, dipilih manual berdasarkan:
+- Likuiditas: avg daily value IDR > 50M (top quartile IDX 2025-2026)
+- Sub-sektor coverage: bank (4), telco (1), consumer (2), mining (4),
+  material (2), energy (2), healthcare (1), agro (1), tech (1), misc (3)
+- Foreign flow aktif: ada /foreign-flow/ data di Sectors (gak suspension)
+- Broker summary stabil: ada /broker-summary/ data bulanan (gak IPO baru)
+
+Universe ini STATIS — dipilih sekali saat setup, gak auto-rebalance.
+Alasan: scope hackathon (Track 03 Market Intelligence), coverage > 21
+saham = blow budget kredit (900 IDX × 3 kredit = ~2700/hari bursa).
+
+On-demand ticker management:
+- `python scripts/fetch_one.py MEDC` — tambah saham baru (~46 kredit
+  sekali: 5y history + broker-top 19 bln + foreign 1 thn)
+- `python scripts/lookup.py AMRT` — analisis ad-hoc ticker mana pun
+  (~2-4 kredit cache-first, gak nyimpan ke universe)
+- API limit harian: ARUS_ONDEMAND_LIMIT (default 3 saham/hari)
+
+Pilih 21 diganti kapan? Hanya saat: emiten delisted / suspension > 1 bln,
+atau ada saham baru naik kelas jadi blue-chip (re-evaluate per quarter).
+"""
 UNIVERSE = ['MEDC', 'BBCA','BBRI','BMRI','BBNI','TLKM','ASII','UNVR','ICBP',
             'ADRO','ANTM','PTBA','ITMG','SMGR','INTP','AKRA','TPIA',
             'BRPT','SILO','BUVA','PGEO']

@@ -199,6 +199,51 @@ python -m app.server                           # → http://localhost:8787
 python scripts/bt_proxy.py
 ```
 
+## Universe management — 21 saham, bukan 900
+
+**Kenapa gak cover seluruh IDX (~900 saham)?**
+
+| Aspek | 21 (skarang) | 900 (full IDX) |
+|---|---|---|
+| Kredit API/hari bursa | ~22 | ~2700 |
+| Budget 1000 kredit/bulan | sustainable | habis 1 hari |
+| Likuiditas filter | top quartile (avg value > 50M IDR) | mixed, banyak yg sepi |
+| Foreign flow coverage | lengkap di Sectors | ~60% doang |
+| Broker summary | lengkap | banyak IPO baru / sepi |
+
+21 saham blue-chip = sweet spot: likuid, ada data broker/foreign lengkap,
+gak boros kredit. Pilih manual sekali saat setup, **gak auto-rebalance**.
+
+**Kriteria pick 21** (lihat `app/config.py`):
+- Likuiditas top quartile IDX 2025-2026
+- Sub-sektor coverage luas (bank 4, mining 4, material 2, energy 2, dll)
+- Foreign flow aktif (bukan suspension)
+- Broker summary stabil (bukan IPO baru)
+
+**3 cara handle ticker lain:**
+
+```mermaid
+flowchart LR
+    A[Saham belum di UNIVERSE] --> B{Butuh di screener<br/>harian?}
+    B -->|ya, layak| C["fetch_one.py MEDC<br/>~46 kredit<br/>masuk UNIVERSE"]
+    B -->|cuma mau cek| D["lookup.py AMRT<br/>~2-4 kredit<br/>analisis ad-hoc"]
+    B -->|gak penting| E[skip]
+    C --> F[Edit config.py:<br/>tambah ke UNIVERSE]
+    F --> G[Fetch harian<br/>otomatis]
+```
+
+- **`fetch_one.py MEDC`**: tambah ke UNIVERSE, fetch 5y history + broker-top
+  + foreign. Mahal (~46 kredit), masuk list harian otomatis setelahnya.
+- **`lookup.py AMRT`**: analisis ticker mana pun, cache-first (~2-4 kredit
+  kalau belum ada), gak nyimpan ke UNIVERSE. Rate limit 5/menit di server.
+- **API limit harian**: `ARUS_ONDEMAND_LIMIT` di `.env` (default 3 saham/hari) —
+  anti spam, hemat kredit.
+
+**Kapan ganti 21?** Delisting / suspension > 1 bulan, atau emiten baru naik
+kelas jadi blue-chip (re-evaluate per quarter, bukan harian). Edit manual
+di `app/config.py`, commit, deploy. Universe sengaja statis biar skor
+backtest reproducible antar-periode.
+
 ## Struktur repo
 
 ```
