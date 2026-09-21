@@ -1,0 +1,14 @@
+.git
+data/cache/*.csv
+data/fetch.log
+data/ledger.csv
+.env
+__pycache__
+*.pyc
+logs/
+.gitignore
+.dockerignore
+docker-compose.yml
+Dockerfile
+README.md
+docs/

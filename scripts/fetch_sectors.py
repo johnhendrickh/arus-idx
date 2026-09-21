@@ -8,7 +8,7 @@ from app import config as cfg, io_cache
 
 API = 'https://api.sectors.app/v2'
 from dotenv import dotenv_values
-KEY = dotenv_values(os.path.join(os.path.dirname(__file__), '..', '.env')).get('SECTORS_API_KEY', '')
+KEY = os.getenv('SECTORS_API_KEY') or dotenv_values(os.path.join(os.path.dirname(__file__), '..', '.env')).get('SECTORS_API_KEY', '')
 LOG = os.path.join(os.path.dirname(__file__), '..', 'data', 'fetch.log')
 COSTS = {'broker_top': 2, 'foreign': 2}   # update bila docs bilang beda
 
