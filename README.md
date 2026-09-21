@@ -22,6 +22,52 @@ Trader ritel IDX dapat banyak sinyal tapi nggak ada yang jujur soal akurasi — 
 
 ## Arsitektur
 
+```mermaid
+flowchart LR
+    subgraph SECTORS["Sectors API v2"]
+        A1["/daily/{sym}.JK"]
+        A2["/index-daily/ihsg"]
+        A3["/broker-summary"]
+        A4["/foreign-flow"]
+    end
+
+    subgraph CACHE["Cache (CSV)"]
+        B1["21 saham OHLCV<br/>5 tahun"]
+        B2["_JKSE 62 bar<br/>(runtime)"]
+        B3["_JKSE_proxy 1520 bar<br/>(backtest, corr 0.933)"]
+        B4["broker + foreign"]
+    end
+
+    subgraph SCORING["Scoring"]
+        C1["Momentum 55%"]
+        C2["Fundamental 45%"]
+        C3{"Gate IHSG<br/>> EMA50 + 1%?"}
+        C4["skor 0-100<br/>+ status OK/WAIT"]
+    end
+
+    subgraph DELIVERY["Delivery"]
+        D1["Web screener<br/>port 8787"]
+        D2["Telegram alert<br/>16.15 WIB"]
+        D3["Ledger<br/>auto-grade +20d"]
+    end
+
+    A1 --> B1
+    A2 --> B2
+    A3 --> B4
+    A4 --> B4
+    B2 --> C3
+    B3 -.backtest only.-> C3
+    B1 --> C1
+    B4 -.info only.-> C1
+    B1 --> C2
+    C1 --> C4
+    C2 --> C4
+    C3 --> C4
+    C4 --> D1
+    C4 --> D2
+    D2 --> D3
+```
+
 **Data layer** — semua runtime fetch dari Sectors API v2:
 
 | Endpoint | Dipakai untuk |
