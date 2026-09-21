@@ -18,7 +18,29 @@ Trader ritel IDX dapat banyak sinyal tapi nggak ada yang jujur soal akurasi — 
 | "Sinyal beli X!" tanpa bukti | IC, hit-rate, dan jumlah sampel (n) ditampilkan bersama skor |
 | Klaim akurasi 90% | Backtest dengan fee + slippage, n eksplisit, kegagalan didokumentasi |
 | Bandarmology dari pola harga (tebakan) | Data broker & foreign flow **asli** dari Sectors API |
-| Sinyal spam tiap hari | Gate regime IHSG (EMA50 + buffer 1%) — diam saat market tipis |
+| "Sinyal spam tiap hari" | Gate regime IHSG (EMA50 + buffer 1%) — diam saat market tipis |
+
+## Contoh tampilan
+
+Screenshot live Senin 21 Sep 2026, IHSG regime DOWN (+0.8% vs EMA50, di
+bawah buffer 1%):
+
+![Dashboard ARUS — screener IDX dengan regime banner, kolom skor/momentum/funda/asing 5d, status WAIT/SKIP, dan ledger](docs/screenshots/dashboard.png)
+
+Yang terlihat di screenshot:
+
+- **Regime banner merah** — IHSG +0.8% di atas EMA50 tapi belum cukup
+  melewati buffer 1%, jadi **DOWN → mode tunggu**. Semua saham ber-status
+  WAIT (likuid) atau SKIP (illiquid). Tidak ada sinyal palsu di market
+  tipis.
+- **19 rows** tersortir by Skor (PTBA 71% di atas, BUVA 21% di bawah).
+- **Kolom ASING 5D** warna hijau/merah — informasi foreign flow 5 hari
+  terakhir, bukan sinyal.
+- **Sort klik header** kolom mana saja (▲▼ toggle), sesuai tipikal
+  trader.
+- **Search bar** untuk lookup ticker di luar universe (~2-4 kredit).
+- **Ledger bawah** "n=0 — rapor mulai terisi saat cron live aktif" —
+  rapor sinyal flow yang self-grading, kosong di awal karena baru live.
 
 ## Arsitektur
 
