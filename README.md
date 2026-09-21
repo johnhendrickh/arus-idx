@@ -129,6 +129,55 @@ flow  = kolom informasi                 # tidak masuk skor, tidak veto
 close strength IC -0.027 (sinyal TERBALIK), porting strategi crypto -14%/yr.
 Lengkap di `docs/BACKTEST.md`.
 
+## Kapan & bagaimana scoring jalan
+
+**Trigger scoring ada 2 — harian otomatis + on-demand:**
+
+| Trigger | Waktu | Tujuan | Kredit API |
+|---|---|---|---|
+| Cron harian | 16:15 WIB setiap hari bursa buka (Sen-Jum, skip weekend + libur) | Update alert Telegram + ledger | ~25/hari |
+| Web screener | Tiap reload halaman / klik header sort | Refresh skor real-time | 0 (cache only) |
+| Lookup ticker | Klik tombol "Analisis" di search bar | Analisis 1 ticker di luar universe | ~2-4 (cache-first) |
+
+**Cron harian (`~/.hermes/scripts/arus_daily.sh`) — 3 fase:**
+
+```
+1. FETCH          → Sectors API (~25 kredit/hari, hanya bursa buka)
+   ├── /daily/{sym}.JK        : OHLCV 30 hari × 21 saham
+   ├── /index-daily/ihsg      : IHSG 62 bar
+   ├── broker-summary         : bulan berjalan
+   └── foreign-flow           : 7 hari terakhir
+
+2. SCORE          → python -m app.main
+   ├── load_cache()           : baca semua CSV (cache-first, 0 API)
+   ├── composite()            : momentum 55% + fundamental 45%
+   ├── liquidity_floor()      : skip saham illiquid
+   ├── regime()               : IHSG > EMA50 + 1% buffer
+   └── rows[] + status OK/WAIT
+
+3. ALERT          → Telegram @arusidxbot (chat 913041706)
+   ├── format_alert(rows, regime, margin_pct)
+   └── send() — info saja, NO AUTO-TRADE
+```
+
+**Guard biar hemat + gak kirim sinyal basi:**
+- Weekend (DOW > 5) → exit 0, gak fetch, gak alert
+- Bursa libur (IHSG last bar ≠ hari ini) → fetch jalan (data saham tetap fresh),
+  scan + alert diskip sampai bursa buka lagi
+- Regime DOWN (margin IHSG < EMA50 + 1%) → alert tetap kirim dengan **semua
+  status WAIT** — biar user tahu sistem masih jalan, bukan diam tanpa kabar
+
+**On-demand (web screener):**
+- `python -m app.server` port 8787, single page HTML
+- `/api` → panggil `scan_full()` (gak pakai API key, baca cache)
+- Sort klik header toggle ▲▼ (state di `SORTK`/`SORTD` global JS)
+- Lookup `?s=AMRT` → rate limit 5/menit, sanitize ticker, fetch on-demand kalau belum di-cache
+
+**On-demand lookup (`scripts/lookup.py`):**
+- Sectors prices 90 hari (~3 kredit cache-first) + Yahoo fundamentals (gratis)
+- Sanitize ticker: `re.sub(r'[^A-Z0-9]', '', symbol.upper().replace('.JK', ''))`, max 8 char
+- Rate limit server: 5 request/menit per IP (server exposed internet)
+
 ## Cara pakai
 
 ```bash
