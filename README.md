@@ -155,7 +155,7 @@ Lengkap di `docs/BACKTEST.md`.
    ├── regime()               : IHSG > EMA50 + 1% buffer
    └── rows[] + status OK/WAIT
 
-3. ALERT          → Telegram @arusidxbot (chat 913041706)
+3. ALERT          → Telegram bot (chat ID dari .env, info saja)
    ├── format_alert(rows, regime, margin_pct)
    └── send() — info saja, NO AUTO-TRADE
 ```
