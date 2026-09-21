@@ -8,13 +8,17 @@ def path(name): return os.path.join(CACHE, name)
 def read_ohlcv(symbol):
     """CSV standar: Date,Open,High,Low,Close,Volume (index date, tz-naive).
     Baris volume=0 dibuang: baris hantu libur dari Sectors (OHLC flat, vol 0)
-    merusak rolling window di grid gabungan (bug 19 Sep: 9/21 saham kehilangan momentum)."""
+    merusak rolling window di grid gabungan (bug 19 Sep: 9/21 saham kehilangan momentum).
+    Index-only files (IHSG `_JKSE` dari /index-daily/, kolom = Close saja): return apa adanya."""
     p = path(f'{symbol}.csv')
     if not os.path.exists(p): return None
     df = pd.read_csv(p, index_col=0, parse_dates=True)
     df.index = pd.to_datetime(df.index, utc=True).tz_localize(None)
-    df = df[['Open','High','Low','Close','Volume']]
-    return df[df['Volume'].fillna(0) > 0]
+    cols = [c for c in ['Open','High','Low','Close','Volume'] if c in df.columns]
+    df = df[cols]
+    if 'Volume' in df.columns:
+        df = df[df['Volume'].fillna(0) > 0]
+    return df
 
 def read_broker(symbol):
     """CSV: date,broker_code,net_idr,buy_idr,sell_idr (per hari/rentang dari Sectors)."""
