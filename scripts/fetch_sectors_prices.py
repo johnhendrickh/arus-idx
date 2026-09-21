@@ -36,9 +36,7 @@ def fetch_daily(symbol, start, end):
     return 1   # 1 kredit per call
 
 def fetch_ihsg(days=90):
-    """Sectors /index-daily/ihsg/ max 62 bar. 100% Sectors API. Kalau stale,
-    cron guard-2 akan skip alert (Sectors-first by design — fallback ke
-    vendor lain violates prinsip sumber data inti)."""
+    """Sectors /index-daily/ihsg/ max 62 bar. 100% Sectors API."""
     end = dt.date.today()
     start = str(end - dt.timedelta(days=days))
     rows = get('/index-daily/ihsg/', start=start, end=str(end))
@@ -51,17 +49,31 @@ def fetch_ihsg(days=90):
     io_cache.write(df, '_JKSE.csv')
     return 1
 
+
+def _ihsg_last_bar():
+    """Return date of last IHSG bar in cache, or None. Dipakai cron buat cek
+    apakah bursa buka / Sectors sudah publish bar hari ini."""
+    p = io_cache.path('_JKSE.csv')
+    if not os.path.exists(p): return None
+    try:
+        df = pd.read_csv(p, index_col=0, parse_dates=True)
+        return df.index[-1].date()
+    except Exception:
+        return None
+
 if __name__ == '__main__':
     days = int(sys.argv[1]) if len(sys.argv) > 1 else 30
     end = dt.date.today()
     start = str(end - dt.timedelta(days=days))
     spent = 0
+    # Bursa-buka detector: kalau IHSG cache ≠ hari ini, bursa mungkin sudah
+    # buka tapi Sectors belum publish → force fetch saham walaupun "fresh"
+    # (Senin pagi setelah weekend: cache Jumat = 3 hari lalu, Sectors perlu
+    # waktu publish Senin). Hemat kredit weekday normal (Sen-Jum cache 1 hari).
+    ihsg_today = _ihsg_last_bar() == end
     for s in cfg.UNIVERSE:
         p = io_cache.path(f'{s}.JK.csv')
-        # skip jika cache sudah punya data ≤1 hari lalu (weekend skip aman,
-        # karena Mon-Sab bursa cuma 5 hari, Senin pagi setelah weekend: cache
-        # lama = Jumat = 3 hari lalu, AMAN refresh)
-        if os.path.exists(p):
+        if os.path.exists(p) and ihsg_today:
             old = io_cache.read_ohlcv(f'{s}.JK')
             if old is not None and (pd.Timestamp(end) - old.index.max()).days <= 1:
                 print(f'{s}: fresh, skip')
