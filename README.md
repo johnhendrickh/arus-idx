@@ -261,11 +261,52 @@ scripts/
   fetch_one.py            — tambah 1 ticker on-demand ke universe (~46 kredit)
   lookup.py               — analisis ad-hoc ticker apa pun (~2-4 kredit)
   bt_proxy.py             — backtest gate IHSG-proxy (window panjang)
+  cron/
+    arus_daily.sh         — cron entry point (guard + fetch + alert)
+    arus_crontab          — crontab untuk native cron / Docker
 docs/
   BACKTEST.md   — SEMUA bukti: angka menang, angka kalah, sampel n, metode
+  DEPLOY.md     — 3 metode deploy (Hermes cron / native cron / Docker)
 data/cache/     — CSV cache (di-gitignore; regenerable via scripts)
 data/ledger.csv — rapor sinyal live (tumbuh sendiri)
 ```
+
+## Deployment
+
+3 metode — pilih sesuai infrastruktur. Detail lengkap: [`docs/DEPLOY.md`](docs/DEPLOY.md).
+
+| Metode | Kapan | Setup |
+|---|---|---|
+| **Hermes cron** (current) | Hackathon demo, Hermes Agent user | `cp scripts/cron/arus_daily.sh ~/.hermes/scripts/` lalu `hermes cron create` |
+| **Native cron** | VPS Linux tanpa Docker | `sudo cp scripts/cron/arus_daily.sh /usr/local/bin/arus-daily` + crontab |
+| **Docker compose** | Cloud, reproducible, portable | `cp .env.example .env` lalu `sudo docker compose up -d --build` |
+
+**TL;DR untuk evaluator:** repo self-contained — `git clone` → isi `.env` → pilih 1 metode di atas.
+
+### Workflow update cron script
+
+Cron script ada di 2 tempat: source-of-truth di repo, eksekusi di host.
+
+```bash
+# 1. Edit source of truth di repo
+$EDITOR scripts/cron/arus_daily.sh
+
+# 2. Commit
+git add scripts/cron/arus_daily.sh && git commit -m "cron: ..."
+
+# 3. Sync ke host (manual, by design)
+# Hermes cron:
+cp scripts/cron/arus_daily.sh ~/.hermes/scripts/arus_daily.sh
+# Native cron:
+sudo cp scripts/cron/arus_daily.sh /usr/local/bin/arus-daily
+# Docker: rebuild image otomatis pick up (no manual sync)
+sudo docker compose build cron && sudo docker compose up -d cron
+```
+
+**Kenapa manual cp (bukan symlink)?** Simpler, gak ada symlink mati kalau repo
+dipindah. Update jarang (~bulanan). Untuk update sering, pakai Docker.
+
+
 
 ## Aturan main kami sendiri
 
