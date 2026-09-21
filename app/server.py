@@ -166,7 +166,20 @@ box.innerHTML=`<div style="display:flex;gap:18px;align-items:center;flex-wrap:wr
 <div style="font-size:12px;color:#c9d1d9;margin-top:4px">fundamental ${pct(x.fundamental_pct)} ${window.pbar(x.fundamental_pct)}</div></div>
 <div style="text-align:center"><svg width="${w}" height="${h}" style="display:block"><polyline fill="none" stroke="${up?'#3fb950':'#f85149'}" stroke-width="2" points="${pts}"/></svg><div style="font-size:11px;color:#8b949e">60 hari terakhir${up?' ▲':' ▼'}</div></div>
 </div>
-<div style="color:#8b949e;margin-top:8px;font-size:12px">${x.bars} bar harga · skor = persentil vs 21 saham universe · ${x.note}. Biaya: ${x.spent} kredit.</div>`;
+<div style="color:#8b949e;margin-top:8px;font-size:12px">${x.bars} bar harga · skor = persentil vs 21 saham universe · ${x.note}. Biaya: ${x.spent} kredit.</div>
+<div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+<button id="add-btn-${x.symbol}" style="background:#1f6feb;color:#fff;border:0;padding:6px 12px;border-radius:4px;cursor:pointer">+ Tambah ke Universe</button>
+<span id="add-status-${x.symbol}" style="font-size:12px;color:#8b949e"></span>
+</div>`;
+document.getElementById('add-btn-'+x.symbol).onclick=async()=>{
+if(!confirm(`Tambah ${x.symbol} ke universe?\n\nBiaya ~46 kredit (sekali, history 5 tahun + broker + foreign).\nLimit harian 3 ticker. Lanjut?`))return;
+const btn=document.getElementById('add-btn-'+x.symbol);const st=document.getElementById('add-status-'+x.symbol);
+btn.disabled=true;btn.textContent='menambahkan…';
+try{
+const r=await fetch('/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({s:x.symbol})}).then(r=>r.json());
+if(r.ok){st.style.color='#3fb950';st.textContent='✓ masuk universe ('+r.spent+' kredit) — refresh untuk lihat di tabel';}
+else{st.style.color='#f85149';st.textContent='✗ '+r.error;btn.disabled=false;btn.textContent='+ Tambah ke Universe';}
+}catch(e){st.style.color='#f85149';st.textContent='✗ '+e.message;btn.disabled=false;btn.textContent='+ Tambah ke Universe';}};
 }catch(e){box.innerHTML='lookup gagal: '+e;}
 });
 document.getElementById('tb').addEventListener('click',e=>{
@@ -209,6 +222,63 @@ class H(BaseHTTPRequestHandler):
             body = PAGE.encode()
             self.send_response(200); self.send_header('Content-Type', 'text/html')
             self.send_header('Content-Length', str(len(body))); self.end_headers(); self.wfile.write(body)
+
+    def do_POST(self):
+        import subprocess, re, datetime as dt
+        if self.path == '/add':
+            try:
+                ln = int(self.headers.get('Content-Length') or 0)
+                body = self.rfile.read(ln).decode('utf-8', 'replace')
+                req = json.loads(body)
+                sym = (req.get('s') or '').upper().strip()
+            except Exception:
+                sym = ''
+            # sanitize — sama dengan lookup
+            sym = re.sub(r'[^A-Z0-9]', '', sym.replace('.JK', ''))[:8]
+            if not sym:
+                self._json(400, {'ok': False, 'error': 'ticker kosong / format salah'}); return
+            if sym in cfg.UNIVERSE:
+                self._json(200, {'ok': False, 'error': f'{sym} sudah ada di universe', 'spent': 0}); return
+            # cek limit harian dari fetch.log
+            from scripts.fetch_sectors import LOG
+            today = f'{dt.date.today():%Y-%m-%d}'
+            n_today = sum(1 for l in open(LOG) if l.startswith(today) and 'add_universe' in l)
+            limit = int(os.getenv('ARUS_ONDEMAND_LIMIT', '3'))
+            if n_today >= limit:
+                self._json(429, {'ok': False, 'error': f'limit harian {limit} ticker tercapai — coba besok', 'spent': 0}); return
+            # spawn fetch_one.py — synchronous ~30-90 detik
+            try:
+                p = subprocess.run([sys.executable, 'scripts/fetch_one.py', sym],
+                                   capture_output=True, text=True, timeout=180,
+                                   cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                if p.returncode != 0:
+                    self._json(500, {'ok': False, 'error': (p.stderr or p.stdout or 'gagal')[-200:], 'spent': 0}); return
+                # append ke UNIVERSE
+                cfg_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'app', 'config.py')
+                with open(cfg_path) as f: src = f.read()
+                if f"'{sym}'" not in src:
+                    src = src.replace("UNIVERSE = [", f"UNIVERSE = ['{sym}', ", 1)
+                    with open(cfg_path, 'w') as f: f.write(src)
+                    # reload modul di-process
+                    import importlib
+                    importlib.reload(cfg)
+                # hitung spent dari log
+                spent = 0
+                with open(LOG) as f: f.seek(0)
+                spent_line = [l for l in open(LOG) if l.startswith(today) and 'add_universe' in l]
+                spent = len(spent_line) * 46   # estimate; fetch_one tidak return persis
+                self._json(200, {'ok': True, 'symbol': sym, 'spent': spent, 'note': 'tambah ke UNIVERSE, fetch harian otomatis besok'})
+            except subprocess.TimeoutExpired:
+                self._json(504, {'ok': False, 'error': 'timeout (>180s) — coba lagi', 'spent': 0})
+            except Exception as e:
+                self._json(500, {'ok': False, 'error': str(e)[:200], 'spent': 0})
+        else:
+            self._json(404, {'ok': False, 'error': 'endpoint tidak dikenal'})
+
+    def _json(self, code, obj):
+        body = json.dumps(obj).encode()
+        self.send_response(code); self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(body))); self.end_headers(); self.wfile.write(body)
 
 if __name__ == '__main__':
     print('ARUS screener: http://localhost:8787')
