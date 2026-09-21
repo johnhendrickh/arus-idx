@@ -22,32 +22,37 @@ Trader ritel IDX dapat banyak sinyal tapi nggak ada yang jujur soal akurasi — 
 
 ## Arsitektur
 
+**Data layer** — semua runtime fetch dari Sectors API v2:
+
+| Endpoint | Dipakai untuk |
+|---|---|
+| `/daily/{sym}.JK` | OHLCV + market cap saham harian |
+| `/index-daily/ihsg` | IHSG untuk regime gate (max 62 bar/window) |
+| `/broker-summary/{sym}/top` | Akumulasi bandar per bulan |
+| `/foreign-flow/{sym}` | Net asing harian |
+
+**History snapshot** — bootstrap sekali saat setup: 5 tahun harga + fundamental
+tahunan. Buat backtest gate IHSG butuh window panjang, kami pakai proxy
+`data/cache/_JKSE_proxy.csv` (equal-weight avg daily return semua saham cache,
+1520 bar, korelasi **0.933** dengan IHSG asli di 62 bar overlap).
+Runtime cukup IHSG asli 62 bar — EMA50 butuh ~50 hari ke belakang.
+
+**Scoring layer:**
+
 ```
-Sectors API v2 (sumber data runtime)
-├── /daily/{sym}.JK          — OHLCV + market cap harian
-├── /index-daily/ihsg        — IHSG (regime gate, 62 bar max/window)
-├── /broker-summary/{sym}/top — akumulasi bandar per bulan
-└── /foreign-flow/{sym}      — net asing harian
-        │
-        ├── snapshot history 5 tahun (bootstrap awal utk backtest)
-        └── fundamental tahunan
-                       ▼
-   skor = 55% momentum + 45% fundamental
-   (gate: IHSG > EMA50 + 1% buffer; floor: likuditas 20-hari)
-   flow = kolom informasi (tidak masuk skor, tidak veto)
-                       ▼
-   ┌───────────────┬────────────────┬──────────────────┐
-   screener web     alert Telegram    ledger sinyal live
-   (1 halaman)      (16.15 WIB)       (auto-grade +20 hari)
+skor  = 55% momentum + 45% fundamental
+gate  = IHSG > EMA50 + 1% buffer        # fail-CLOSED: idx None -> DOWN
+floor = likuiditas 20-hari minimum
+flow  = kolom informasi                 # tidak masuk skor, tidak veto
 ```
 
-> **Catatan teknis IHSG:** endpoint Sectors `/index-daily/ihsg/` melayani max
-> 62 bar per window apapun range-nya. Untuk backtest gate IHSG butuh data
-> panjang, kami bangun proxy IHSG = equal-weight daily return semua saham
-> cache, korelasi **0.933** dengan IHSG asli di 62 bar overlap.
-> `data/cache/_JKSE_proxy.csv` (1520 bar, 2020-06 → sekarang).
-> Untuk runtime, IHSG asli 62 bar cukup — gate = bandingkan close vs EMA50
-> butuh ~50 hari ke belakang, masih dalam window.
+**Delivery layer:**
+
+| Komponen | Output |
+|---|---|
+| Web screener | 1 halaman, port 8787, sortir klik header, lookup ticker on-demand |
+| Telegram alert | 16.15 WIB setiap hari bursa, margin IHSG eksplisit |
+| Ledger live | Auto-grade tiap sinyal setelah +20 hari, rapor akurasi tumbuh sendiri |
 
 ## Skor
 
