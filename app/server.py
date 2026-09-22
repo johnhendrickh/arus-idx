@@ -48,53 +48,94 @@ PAGE = """<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ARUS — IDX Flow Screener</title>
 <style>
-body{font-family:system-ui,sans-serif;max-width:860px;margin:24px auto;padding:0 16px;background:#0e1117;color:#e6e6e6}
-h1{font-size:22px;margin-bottom:4px}.sub{color:#8b949e;font-size:13px;margin-bottom:18px}
-.regime{display:inline-block;padding:4px 10px;border-radius:6px;font-weight:600;margin-bottom:14px}
+*{box-sizing:border-box}
+body{font-family:system-ui,sans-serif;max-width:1100px;margin:16px auto;padding:0 14px;background:#0e1117;color:#e6e6e6}
+h1{font-size:22px;margin-bottom:4px}.sub{color:#8b949e;font-size:13px;margin-bottom:16px}
+.regime{display:inline-block;padding:5px 12px;border-radius:6px;font-weight:600;margin-bottom:12px;font-size:14px}
 .UP{background:#1b4332;color:#95d5b2}.DOWN{background:#4a1525;color:#f4a6b8}
-table{border-collapse:collapse;width:100%}th,td{padding:8px 10px;text-align:left;border-bottom:1px solid #21262d}
-th{color:#8b949e;font-size:12px;text-transform:uppercase;cursor:pointer;user-select:none}
+/* table — desktop default, horizontal scroll pada layar sempit */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:14px}
+table{border-collapse:collapse;width:100%;min-width:760px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid #21262d;font-size:13px;white-space:nowrap}
+th{color:#8b949e;font-size:11px;text-transform:uppercase;cursor:pointer;user-select:none;font-weight:600}
 th:hover{color:#e6e6e6}th.sort-asc::after{content:" ▲"}th.sort-desc::after{content:" ▼"}
-.score{font-weight:700;font-size:15px}.pill{padding:2px 8px;border-radius:10px;font-size:11px}
+.score{font-weight:700;font-size:15px}.pill{padding:2px 8px;border-radius:10px;font-size:11px;display:inline-block}
 .g{background:#1b4332;color:#95d5b2}.r{background:#4a1525;color:#f4a6b8}.m{background:#30363d;color:#c9d1d9}
-.foot{margin-top:18px;color:#8b949e;font-size:12px;border-top:1px solid #21262d;padding-top:10px}
-.bar{height:8px;border-radius:4px;background:#30363d;width:80px;display:inline-block;vertical-align:middle;position:relative;margin-right:6px}
-.fill{height:8px;border-radius:4px;display:block}
+.foot{margin-top:16px;color:#8b949e;font-size:12px;border-top:1px solid #21262d;padding-top:10px}
+.bar{height:7px;border-radius:4px;background:#30363d;width:70px;display:inline-block;vertical-align:middle;position:relative;margin-right:6px}
+.fill{height:7px;border-radius:4px;display:block}
 .f-hi{background:#2ea043}.f-mid{background:#d29922}.f-lo{background:#da3633}.f-na{background:#30363d}
-.pct{font-size:11px;color:#8b949e;vertical-align:middle}
-.controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:12px;font-size:13px;color:#c9d1d9}
-.controls select{background:#161b22;color:#e6e6e6;border:1px solid #30363d;border-radius:6px;padding:4px 8px}
-.controls input[type=text]{background:#161b22;color:#e6e6e6;border:1px solid #30363d;border-radius:6px;padding:4px 8px;width:110px}
-.controls label{color:#8b949e}
-.star{cursor:pointer;font-size:15px;color:#30363d;user-select:none}
+.pct{font-size:11px;color:#8b949e;vertical-align:middle;margin-left:2px}
+.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px;font-size:13px;color:#c9d1d9}
+.controls select,.controls input[type=text]{background:#161b22;color:#e6e6e6;border:1px solid #30363d;border-radius:6px;padding:5px 8px;font-size:13px}
+.controls input[type=text]{width:130px}
+.controls label{color:#8b949e;display:inline-flex;align-items:center;gap:4px}
+.star{cursor:pointer;font-size:18px;color:#30363d;user-select:none;-webkit-tap-highlight-color:transparent}
 .star.on{color:#e3b341}
 details{margin:14px 0;color:#c9d1d9;font-size:13px}
-details summary{cursor:pointer;color:#58a6ff;font-weight:600}
-details .x{background:#161b22;border:1px solid #21262d;border-radius:8px;padding:12px 16px;margin-top:8px;line-height:1.6}
+details summary{cursor:pointer;color:#58a6ff;font-weight:600;padding:6px 0}
+details .x{background:#161b22;border:1px solid #21262d;border-radius:8px;padding:12px 16px;margin-top:8px;line-height:1.65}
 details .x b{color:#e6e6e6}.x .q{color:#79c0ff}.x .a{color:#7ee787}
+/* mobile card view — default hidden, shown via @media */
+.cards{display:none}
+.card{background:#161b22;border:1px solid #21262d;border-radius:10px;padding:12px 14px;margin-bottom:10px}
+.card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.card-sym{font-size:18px;font-weight:700}
+.card-score{font-size:24px;font-weight:700;line-height:1}
+.card-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:13px;border-top:1px solid #21262d}
+.card-row:first-of-type{border-top:none}
+.card-lbl{color:#8b949e;font-size:12px}
+.card-val{color:#e6e6e6;font-size:13px;text-align:right}
+/* tablet */
+@media (max-width:900px){
+  body{max-width:100%}
+  th,td{padding:6px 8px;font-size:12px}
+  .bar{width:55px}
+  h1{font-size:20px}
+  .regime{font-size:13px}
+}
+/* mobile — switch from table to cards */
+@media (max-width:640px){
+  body{padding:0 10px;margin:10px auto}
+  h1{font-size:18px}.sub{font-size:12px;margin-bottom:12px}
+  .regime{padding:4px 10px;font-size:12px;margin-bottom:10px}
+  .controls{gap:8px;font-size:12px}
+  .controls input[type=text]{width:90px;font-size:12px}
+  .controls select{padding:4px 6px;font-size:12px}
+  .tbl-wrap{display:none}
+  .cards{display:block}
+  .card{padding:10px 12px}
+  .card-sym{font-size:16px}
+  .card-score{font-size:22px}
+  .card-row{padding:3px 0;font-size:12px}
+  .card-lbl,.card-val{font-size:12px}
+  /* regime pills full-width on small screens */
+  .controls > * {flex:1 1 auto;min-width:0}
+}
 </style></head><body>
 <h1>ARUS</h1>
-<div class="sub">Screener IDX — momentum &times; fundamental &times; aliran dana (data: Sectors API). Data per <span id=asof></span> · <a href="#cara-baca" style="color:#58a6ff;text-decoration:none">cara baca halaman ini ↓</a></div>
+<div class="sub">Screener IDX — momentum &times; fundamental &times; aliran dana (data: Sectors API). Data per <span id=asof></span> · <a href="#cara-baca" style="color:#58a6ff;text-decoration:none">cara baca ↓</a></div>
 <div id=regime class="regime"></div>
 <div class="controls">
-  <label title="klik judul kolom tabel untuk mengurutkan ▲▼">Urutkan:</label>
+  <label title="klik judul kolom tabel untuk mengurutkan ▲▼">Urut:</label>
   <b id=sortlabel>Skor ▼</b>
   <label>Status:</label>
   <select id=stat>
     <option value="">Semua</option>
-    <option value="ok">OK saja (likuid)</option>
-    <option value="wait">WAIT / SKIP</option>
+    <option value="ok">OK</option>
+    <option value="wait">WAIT/SKIP</option>
   </select>
-  <label><input type=checkbox id=only-foreign> Hanya asing net-beli 5d</label>
-  <input type=text id=q placeholder="cari saham… (BBCA)">
-  <button id=lookup-btn style="background:#21262d;color:#58a6ff;border:1px solid #30363d;border-radius:6px;padding:4px 10px;cursor:pointer">analisis</button>
-  <label><input type=checkbox id=watch> ★ watchlist</label>
+  <label><input type=checkbox id=only-foreign> Asing +5d</label>
+  <input type=text id=q placeholder="cari (BBCA)">
+  <button id=lookup-btn style="background:#21262d;color:#58a6ff;border:1px solid #30363d;border-radius:6px;padding:5px 10px;cursor:pointer">analisis</button>
+  <label><input type=checkbox id=watch> ★</label>
 </div>
 <div id=lookup-box style="display:none;background:#161b22;border:1px solid #30363d;border-radius:8px;padding:12px 16px;margin-bottom:12px;font-size:13px"></div>
-<table><thead><tr>
+<div class="tbl-wrap"><table><thead><tr>
 <th data-k=symbol style="cursor:pointer">Saham</th><th data-k=score style="cursor:pointer">Skor</th><th data-k=momentum style="cursor:pointer">Momentum</th><th data-k=fundamental style="cursor:pointer">Funda</th><th data-k=foreign style="cursor:pointer">Asing 5d</th><th data-k=fair style="cursor:pointer" title="Posisi harga saat ini vs median close 252 hari (±8% pita). murah = di bawah pita bawah, netral = dalam pita, mahal = di atas pita atas. Bukan saran beli/jual, hanya konteks.">Acuan</th><th data-k=target style="cursor:pointer" title="Target +20d (backtest top-5 median spread +1.65%/20d) & Stop-loss (52-week low)">Target / Stop</th><th data-k=status>Status</th><th title="klik ★ untuk watchlist">★</th>
 </tr></thead>
-<tbody id=tb></tbody></table>
+<tbody id=tb></tbody></table></div>
+<div class="cards" id=cb></div>
 <div class=foot id=ledger></div>
 <details id=cara-baca><summary>Cara baca halaman ini — skor itu apa?</summary>
 <div class=x>
@@ -157,6 +198,26 @@ document.getElementById('tb').innerHTML=rows.map(r=>{
 const st=stOf(r);const stc=st==='OK'?'g':(st==='WAIT'?'r':'m');
 const f=fmtForeign(r);const fg=f==null?'—':(f.raw>0?`<span class=g>${f.txt}</span>`:`<span class=r>${f.txt}</span>`);
 return `<tr><td><b>${r.symbol}</b></td><td>${bar(r.score)}</td><td>${bar(r.momentum)}</td><td>${bar(r.fundamental)}</td><td>${fg}</td><td>${fmtFair(r)}</td><td>${fmtTarget(r)}</td><td><span class="pill ${stc}">${st}</span></td><td><span class="star ${WL.has(r.symbol)?'on':''}" data-s=${r.symbol}>${WL.has(r.symbol)?'★':'☆'}</span></td></tr>`}).join('');
+// Mobile card view — same data, stacked layout
+document.getElementById('cb').innerHTML=rows.map(r=>{
+  const st=stOf(r);const stc=st==='OK'?'g':(st==='WAIT'?'r':'m');
+  const f=fmtForeign(r);
+  const fv=r.fair;
+  const acuanBadge=fv?`<span class="pill ${fv.pos_band==='murah'?'g':(fv.pos_band==='mahal'?'r':'m')}">${fv.pos_band}</span>`:'—';
+  const acuanRange=fv?`<span class=card-val>${fmtPrice(fv.fair_low)}–${fmtPrice(fv.fair_high)}</span>`:'—';
+  const target=fv?`<span class=card-val>${fmtPrice(fv.target_20d)} <span style="color:#8b949e">/</span> <span class=r>${fmtPrice(fv.stop_loss)}</span></span>`:'—';
+  return `<div class="card">
+<div class="card-head"><div class="card-sym">${r.symbol}<span class="star ${WL.has(r.symbol)?'on':''}" data-s=${r.symbol} style="margin-left:8px;font-size:16px">${WL.has(r.symbol)?'★':'☆'}</span></div><div class="card-score">${bar(r.score)}<span class="pill ${stc}" style="margin-left:6px">${st}</span></div></div>
+<div class="card-row"><span class=card-lbl>Asing 5d</span><span class=card-val>${f?`${f.raw>0?'+':'−'}${f.txt}`:'—'}</span></div>
+<div class="card-row"><span class=card-lbl>Acuan</span>${acuanRange}</div>
+<div class="card-row"><span class=card-lbl>Acuan (status)</span><span class=card-val>${acuanBadge}</span></div>
+<div class="card-row"><span class=card-lbl>Target / Stop</span>${target}</div>
+<div class="card-row"><span class=card-lbl>Momentum</span><span class=card-val>${bar(r.momentum)}</span></div>
+<div class="card-row"><span class=card-lbl>Fundamental</span><span class=card-val>${bar(r.fundamental)}</span></div>
+</div>`}).join('');
+// wire up stars in card view (table stars handled by static delegation)
+function toggleWL(sym){if(WL.has(sym))WL.delete(sym);else WL.add(sym);localStorage.setItem('arus-watchlist',JSON.stringify([...WL]));render();}
+document.querySelectorAll('.card .star').forEach(s=>{s.onclick=()=>toggleWL(s.dataset.s);});
 document.getElementById('ledger').innerHTML='Ledger sinyal flow: '+(d.ledger.n>0?`n=${d.ledger.n}, hit ${(d.ledger.hit*100).toFixed(0)}%, median ${(d.ledger.med*100).toFixed(1)}%`:'n=0 — rapor mulai terisi saat cron live aktif');
 }
 ['stat','only-foreign','watch'].forEach(id=>document.getElementById(id).addEventListener('change',render));
@@ -204,10 +265,7 @@ else{st.style.color='#f85149';st.textContent='✗ '+r.error;btn.disabled=false;b
 });
 document.getElementById('tb').addEventListener('click',e=>{
 const s=e.target.closest('.star');if(!s)return;
-const sym=s.dataset.s;
-if(WL.has(sym))WL.delete(sym);else WL.add(sym);
-localStorage.setItem('arus-watchlist',JSON.stringify([...WL]));
-render();});
+toggleWL(s.dataset.s);});
 </script></body></html>"""
 
 class H(BaseHTTPRequestHandler):
