@@ -72,6 +72,16 @@ th:hover{color:#e6e6e6}th.sort-asc::after{content:" ▲"}th.sort-desc::after{con
 .pill-buy{background:#238636;color:#fff;font-weight:700;letter-spacing:0.3px}
 .pill-sell{background:#b62324;color:#fff;font-weight:700;letter-spacing:0.3px}
 .pill-net{background:#6e7681;color:#fff;font-weight:700;letter-spacing:0.3px}
+/* ledger banner — prominent box, jelasin status ledger + link ke /ledger */
+.ledger-banner{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:14px 16px;margin-bottom:14px;font-size:13px;line-height:1.55}
+.ledger-banner .lb-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px}
+.ledger-banner .lb-title{font-size:14px;font-weight:700;color:#e6e6e6}
+.ledger-banner .lb-stats{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:#8b949e}
+.ledger-banner .lb-stats b{color:#e6e6e6;font-size:13px}
+.ledger-banner .lb-link{display:inline-block;background:#21262d;color:#58a6ff;border:1px solid #30363d;border-radius:6px;padding:5px 12px;text-decoration:none;font-size:12px;font-weight:600}
+.ledger-banner .lb-link:hover{background:#30363d;color:#79c0ff}
+.ledger-banner .lb-note{color:#8b949e;font-size:12px;margin-top:6px}
+.ledger-banner .lb-empty{color:#8b949e}
 .foot{margin-top:16px;color:#8b949e;font-size:12px;border-top:1px solid #21262d;padding-top:10px}
 .bar{height:7px;border-radius:4px;background:#30363d;width:70px;display:inline-block;vertical-align:middle;position:relative;margin-right:6px}
 .fill{height:7px;border-radius:4px;display:block}
@@ -146,6 +156,7 @@ details .x b{color:#e6e6e6}.x .q{color:#79c0ff}.x .a{color:#7ee787}
 <th data-k=symbol style="cursor:pointer">Saham</th><th data-k=score style="cursor:pointer">Skor</th><th data-k=momentum style="cursor:pointer">Momentum</th><th data-k=fundamental style="cursor:pointer">Funda</th><th data-k=foreign style="cursor:pointer">Asing 5d</th><th data-k=fair style="cursor:pointer" title="Posisi harga saat ini vs median close 252 hari (±8% pita). murah = di bawah pita bawah, netral = dalam pita, mahal = di atas pita atas. Bukan saran beli/jual, hanya konteks.">Acuan</th><th data-k=target style="cursor:pointer" title="Target +20d (backtest top-5 median spread +1.65%/20d) & Stop-loss (52-week low)">Target / Stop</th><th data-k=status>Status</th><th title="klik ★ untuk watchlist">★</th>
 </tr></thead>
 <tbody id=tb></tbody></table></div>
+<div id=ledger-banner class="ledger-banner"></div>
 <div class="cards" id=cb></div>
 <div class=foot id=ledger></div>
 <details id=cara-baca><summary>Cara baca halaman ini — skor itu apa?</summary>
@@ -242,6 +253,18 @@ document.getElementById('cb').innerHTML=rows.map(r=>{
 // wire up stars in card view (table stars handled by static delegation)
 function toggleWL(sym){if(WL.has(sym))WL.delete(sym);else WL.add(sym);localStorage.setItem('arus-watchlist',JSON.stringify([...WL]));render();}
 document.querySelectorAll('.card .star').forEach(s=>{s.onclick=()=>toggleWL(s.dataset.s);});
+// Ledger banner — prominent di bawah cards/table, link ke /ledger
+const lb=d.ledger;
+const lbEl=document.getElementById('ledger-banner');
+const total=lb&&lb.n!=null?lb.n:0;
+const done=lb&&lb.done!=null?lb.done:0;
+if(total>0){
+  const hit=lb.hit!=null?(lb.hit*100).toFixed(0)+'%':'—';
+  const med=lb.med!=null?(lb.med*100).toFixed(2)+'%':'—';
+  lbEl.innerHTML=`<div class="lb-head"><div class="lb-title">📊 Ledger sinyal flow</div><a class="lb-link" href="/ledger">lihat semua →</a></div><div class="lb-stats"><span><b>${total}</b> sinyal tercatat</span><span><b>${done}</b> resolved (≥20d)</span><span><b>${hit}</b> hit rate</span><span><b>${med}</b> median return</span></div><div class="lb-note">Tiap sinyal flow dicatat → 20 hari kemudian diukur otomatis. Rapor akurasi tumbuh sendiri dari data live.</div>`;
+}else{
+  lbEl.innerHTML=`<div class="lb-head"><div class="lb-title">📊 Ledger sinyal flow</div><a class="lb-link" href="/ledger">lihat halaman →</a></div><div class="lb-empty">Rapor masih kosong — <b>${total}</b> sinyal tercatat.<br>Cron <code>app.main</code> → <code>scripts/ledger_resolve.py</code> jalan otomatis tiap hari bursa. Halaman <a href="/ledger" style="color:#58a6ff">/ledger</a> akan menampilkan semua sinyal + return 20d.</div>`;
+}
 document.getElementById('ledger').innerHTML='Ledger sinyal flow: '+(d.ledger.n>0?`n=${d.ledger.n}, hit ${(d.ledger.hit*100).toFixed(0)}%, median ${(d.ledger.med*100).toFixed(1)}%`:'n=0 — rapor mulai terisi saat cron live aktif');
 }
 ['stat','only-foreign','watch'].forEach(id=>document.getElementById(id).addEventListener('change',render));
@@ -292,6 +315,145 @@ const s=e.target.closest('.star');if(!s)return;
 toggleWL(s.dataset.s);});
 </script></body></html>"""
 
+LEDGER_PAGE = """<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ARUS — Ledger Sinyal</title>
+<style>
+*{box-sizing:border-box}
+body{font-family:system-ui,sans-serif;max-width:1100px;margin:16px auto;padding:0 14px;background:#0e1117;color:#e6e6e6}
+h1{font-size:22px;margin-bottom:4px}.sub{color:#8b949e;font-size:13px;margin-bottom:16px}
+.back{color:#58a6ff;text-decoration:none;font-size:13px;display:inline-block;margin-bottom:14px}
+.back:hover{color:#79c0ff}
+.summary{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.stat{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:14px 18px;flex:1;min-width:140px}
+.stat .lbl{color:#8b949e;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px}
+.stat .val{font-size:24px;font-weight:700;line-height:1}
+.stat .sub{color:#8b949e;font-size:12px;margin-top:4px}
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;min-width:720px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid #21262d;font-size:13px;white-space:nowrap}
+th{color:#8b949e;font-size:11px;text-transform:uppercase;font-weight:600;cursor:pointer;user-select:none}
+th:hover{color:#e6e6e6}th.sort-asc::after{content:" ▲"}th.sort-desc::after{content:" ▼"}
+.pill{padding:2px 8px;border-radius:10px;font-size:11px;display:inline-block}
+.g{background:#238636;color:#fff;font-weight:700}.r{background:#b62324;color:#fff;font-weight:700}.m{background:#30363d;color:#c9d1d9}
+.note{color:#8b949e;font-size:12px;max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.foot{margin-top:18px;color:#8b949e;font-size:12px;border-top:1px solid #21262d;padding-top:10px;line-height:1.6}
+.empty{text-align:center;padding:40px 16px;color:#8b949e;background:#161b22;border:1px solid #21262d;border-radius:10px}
+.empty h3{color:#e6e6e6;margin:0 0 8px;font-size:16px}
+.empty code{background:#21262d;padding:2px 6px;border-radius:4px;font-size:12px;color:#79c0ff}
+@media (max-width:640px){
+  body{padding:0 10px;margin:10px auto}
+  h1{font-size:18px}
+  .stat .val{font-size:20px}
+  th,td{padding:6px 8px;font-size:12px}
+  .note{max-width:160px}
+}
+</style></head><body>
+<a class="back" href="/">← balik ke screener</a>
+<h1>📊 Ledger Sinyal Flow</h1>
+<div class="sub">Self-grading ledger: tiap sinyal flow dicatat → 20 hari kemudian diukur returnnya. Rapor akurasi tumbuh sendiri dari data live, bukan backtest ulang.</div>
+<div class="summary" id=summary></div>
+<div class="tbl-wrap"><table id=ledger-table>
+<thead><tr>
+<th data-k=date style="cursor:pointer">Tanggal</th>
+<th data-k=symbol style="cursor:pointer">Saham</th>
+<th data-k=score style="cursor:pointer">Skor</th>
+<th data-k=price_ref style="cursor:pointer">Harga masuk</th>
+<th data-k=outcome style="cursor:pointer">Return 20d</th>
+<th data-k=resolved style="cursor:pointer">Status</th>
+<th>Note</th>
+</tr></thead><tbody id=tb></tbody>
+</table></div>
+<div class="foot">
+<b>Cara baca:</b> <code>tanggal</code> = kapan sinyal flow dicatat (cron harian). <code>skor</code> = composite 0-100 saat pencatatan. <code>harga masuk</code> = close hari itu. <code>return 20d</code> = return 20 hari bursa setelah pencatatan. <code>status</code> = <span class="pill g">MENANG</span> kalau return > 0, <span class="pill r">KALAH</span> kalau ≤ 0.
+<br><br>
+Cron harian: <code>python -m app.main</code> (16.15 WIB) catat sinyal → <code>python scripts/ledger_resolve.py</code> (17.15 WIB) isi outcome 20 hari kemudian. File: <code>data/ledger.csv</code>. Detail implementasi: <a href="https://github.com/johnhendrickh/arus-idx/blob/master/app/ledger.py" style="color:#58a6ff">app/ledger.py</a>.
+</div>
+<script>
+let ROWS=null;let SORTK='date',SORTD=-1;
+fetch('/api/ledger').then(r=>r.json()).then(d=>{
+  ROWS=d.rows||[];render();
+});
+function fmtDate(s){return s;}
+function fmtPct(v){if(v==null)return '—';const cls=v>0?'g':(v<0?'r':'m');const pct=(v*100).toFixed(2);return `<span class="pill ${cls}">${v>0?'+':''}${pct}%</span>`;}
+function fmtPrice(v){if(v==null)return '—';return Math.round(v).toLocaleString('id-ID');}
+function render(){
+  const sum=document.getElementById('summary');
+  if(!ROWS||ROWS.length===0){
+    document.querySelector('.tbl-wrap').innerHTML='<div class="empty"><h3>Rapor masih kosong</h3><p>Cron harian <code>app.main</code> → <code>scripts/ledger_resolve.py</code> jalan otomatis tiap hari bursa.<br>Sinyal flow pertama yang masuk ke Telegram bakal tercatat di sini.<br>Outcome 20 hari kemudian dihitung otomatis oleh <code>ledger.resolve()</code>.</p></div>';
+    sum.innerHTML='';
+    return;
+  }
+  const total=ROWS.length;
+  const done=ROWS.filter(r=>r.outcome_fwd20!=null);
+  const nd=done.length;
+  const wins=done.filter(r=>r.outcome_fwd20>0).length;
+  const hit=nd>0?Math.round(wins/nd*100):null;
+  const med=nd>0?(done.map(r=>r.outcome_fwd20).sort((a,b)=>a-b)[Math.floor(nd/2)]*100).toFixed(2)+'%':'—';
+  sum.innerHTML=`
+    <div class="stat"><div class="lbl">Total sinyal</div><div class="val">${total}</div><div class="sub">sejak cron live aktif</div></div>
+    <div class="stat"><div class="lbl">Resolved (≥20d)</div><div class="val">${nd}</div><div class="sub">dari ${total}</div></div>
+    <div class="stat"><div class="lbl">Hit rate</div><div class="val">${hit!=null?hit+'%':'—'}</div><div class="sub">return 20d > 0</div></div>
+    <div class="stat"><div class="lbl">Median return</div><div class="val">${med}</div><div class="sub">dari ${nd} resolved</div></div>`;
+  const key={date:r=>r.date,symbol:r=>r.symbol,score:r=>r.score??-1,price_ref:r=>r.price_ref??-1,outcome:r=>r.outcome_fwd20??-Infinity,resolved:r=>r.outcome_fwd20==null?0:1};
+  const dir=SORTK==='symbol'?1:SORTD;
+  ROWS.sort((a,b)=>{const ka=key[SORTK](a),kb=key[SORTK](b);return ka===kb?0:(ka>kb?dir:-dir);});
+  document.querySelectorAll('th').forEach(th=>{th.className=th.dataset.k===SORTK?(dir===1?'sort-asc':'sort-desc'):'';});
+  document.getElementById('tb').innerHTML=ROWS.map(r=>{
+    const st=r.outcome_fwd20==null?'<span class="pill m">menunggu</span>':(r.outcome_fwd20>0?'<span class="pill g">menang</span>':'<span class="pill r">kalah</span>');
+    return `<tr><td>${fmtDate(r.date)}</td><td><b>${r.symbol}</b></td><td>${r.score!=null?(r.score*100).toFixed(0)+'%':'—'}</td><td>${fmtPrice(r.price_ref)}</td><td>${fmtPct(r.outcome_fwd20)}</td><td>${st}</td><td class="note" title="${(r.note||'').replace(/"/g,'&quot;')}">${r.note||'—'}</td></tr>`;
+  }).join('');
+}
+document.querySelectorAll('th[data-k]').forEach(th=>th.addEventListener('click',()=>{
+  if(SORTK===th.dataset.k)SORTD=-SORTD;else{SORTK=th.dataset.k;SORTD=th.dataset.k==='symbol'?1:-1;}
+  render();
+}));
+</script></body></html>"""
+
+def ledger_page_data():
+    """List all ledger entries untuk /ledger page. Returns {rows: [...]}.
+    Backfill price_ref dari cache OHLCV kalau CSV-nya NaN (cron live belum isi)."""
+    import os as _os
+    csv_path = ledger.LEDGER
+    if not _os.path.exists(csv_path):
+        return {'rows': []}
+    df = pd.read_csv(csv_path)
+    if len(df) == 0:
+        return {'rows': []}
+    rows = []
+    # Try to backfill price_ref dari cache kalau kosong
+    ohlcv = {}
+    try:
+        for sym in cfg.UNIVERSE:
+            d = io_cache.read_ohlcv(sym + '.JK')
+            if d is not None and len(d) > 0:
+                ohlcv[sym + '.JK'] = d
+    except Exception:
+        pass
+    for _, r in df.iterrows():
+        ref = r.get('price_ref')
+        if pd.isna(ref) or ref == 0:
+            sym = str(r.get('symbol', ''))
+            for sym_jk, d in ohlcv.items():
+                if sym_jk.replace('.JK', '') == sym:
+                    target = pd.Timestamp(str(r.get('date', '')))
+                    if target in d.index:
+                        ref = float(d.loc[target, 'Close'])
+                    elif len(d.index) > 0:
+                        ref = float(d['Close'].iloc[-1])
+                    break
+        rows.append({
+            'date': str(r.get('date', '')),
+            'symbol': str(r.get('symbol', '')),
+            'signal_type': str(r.get('signal_type', '')),
+            'score': float(r['score']) if pd.notna(r.get('score')) else None,
+            'price_ref': float(ref) if (ref is not None and pd.notna(ref)) else None,
+            'outcome_fwd20': float(r['outcome_fwd20']) if pd.notna(r.get('outcome_fwd20')) else None,
+            'note': str(r.get('note', ''))[:80],
+        })
+    rows.sort(key=lambda x: x['date'], reverse=True)
+    return {'rows': rows}
+
 class H(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
     _lookup_times = []   # timestamp detik terakhir, utk rate limit
@@ -299,6 +461,14 @@ class H(BaseHTTPRequestHandler):
         if self.path == '/api':
             body = json.dumps(build_rows()).encode()
             self.send_response(200); self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', str(len(body))); self.end_headers(); self.wfile.write(body)
+        elif self.path == '/api/ledger':
+            body = json.dumps(ledger_page_data()).encode()
+            self.send_response(200); self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', str(len(body))); self.end_headers(); self.wfile.write(body)
+        elif self.path == '/ledger':
+            body = LEDGER_PAGE.encode()
+            self.send_response(200); self.send_header('Content-Type', 'text/html')
             self.send_header('Content-Length', str(len(body))); self.end_headers(); self.wfile.write(body)
         elif self.path.startswith('/lookup?'):
             import time as _t

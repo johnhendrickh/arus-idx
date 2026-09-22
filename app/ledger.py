@@ -36,10 +36,14 @@ def resolve(ohlcv):
     df.to_csv(LEDGER, index=False)
 
 def stats(signal_type=None):
+    """Return {n: total, done: resolved_count, hit: hit_rate, med: median_return}.
+    n = total rows; done = rows dengan outcome_fwd20 terisi. hit/med = dari done saja."""
     if not os.path.exists(LEDGER): return None
     df = pd.read_csv(LEDGER)
     if signal_type: df = df[df['signal_type'] == signal_type]
     done = df[df['outcome_fwd20'].notna()]
-    if not len(done): return {'n': 0}
-    return {'n': len(done), 'hit': float((done['outcome_fwd20'] > 0).mean()),
+    if not len(done):
+        return {'n': len(df), 'done': 0, 'hit': None, 'med': None}
+    return {'n': len(df), 'done': int(len(done)),
+            'hit': float((done['outcome_fwd20'] > 0).mean()),
             'med': float(done['outcome_fwd20'].median())}
