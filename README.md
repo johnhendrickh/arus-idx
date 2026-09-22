@@ -24,6 +24,7 @@ docker compose up -d --build               # atau: python -m venv .venv && .venv
 - Server: `python -m app.server` port 8787 ✅ running
 - Scan: 19 rows, skor 0-100, kolom ASING 5D, status WAIT/SKIP ✅ running
 - Backtest: combo momentum+fundamental IC +0.113, top vs bot 67%, n=12 ✅ reproducible
+- Hasil run actual per-tanggal: [`docs/test-results/2026-09-22.md`](docs/test-results/2026-09-22.md)
 
 ## Video demo
 
