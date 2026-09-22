@@ -1,20 +1,21 @@
-"""value.py — harga wajar reference + edge/stop-loss per saham.
+"""value.py — harga acuan + edge/stop-loss per saham (informasi, bukan rekomendasi).
 
 Tidak masuk skor (composite di score.py tetap murni rank-based).
-Peran: kasih konteks "kalau OK, kira-kira harga masuk di mana + target ke mana".
+Peran: kasih konteks "kalau OK, kira-kira harga saat ini murah/netral/mahal
+vs median setahun terakhir, plus target/stop derivatif dari backtest".
 
 Output per symbol (row):
-- fair_mid   : median close 252 hari terakhir (proxy "harga wajar")
-- fair_low   : fair_mid * 0.92  (-1 std dev band)
-- fair_high  : fair_mid * 1.08  (+1 std dev band)
-- pos_band   : "di bawah wajar" / "wajar" / "di atas wajar" (current vs fair_mid)
+- fair_mid   : median close 252 hari terakhir (proxy "harga acuan")
+- fair_low   : fair_mid * 0.92  (band bawah, -8%)
+- fair_high  : fair_mid * 1.08  (band atas, +8%)
+- pos_band   : "murah" / "netral" / "mahal" (current vs fair_mid)
 - target_20d : current * (1 + EDGE_UP)  — backtest top-5 median spread +1.65%/20d
 - stop_loss  : min low 252 hari  — pakai 52-week low (252 hari) sebagai floor
 - edge_pct   : (target_20d - current) / current  — simple % upside
 
 Pendekatan sengaja simple — bukan DCF / DDM, karena:
 - Data fundamental di cache cuma NI/revenue/equity per tahun (no shares outstanding, no EPS precise)
-- Close median 252 hari cukup robust sebagai "harga yang dianggap pasar wajar akhir-akhir ini"
+- Close median 252 hari cukup robust sebagai "harga acuan yang dianggap pasar akhir-akhir ini"
 - Std-dev band bisa di-tweak per saham volatilitas (saat ini fixed ±8%)
 
 EDGE_UP = 0.0165 (= +1.65%/20d) konsisten dengan backtest combo m+f median spread.
@@ -28,6 +29,11 @@ FAIR_LOOKBACK = 252          # median close 1 tahun
 BAND_LOW_PCT = 0.08          # -8% dari fair_mid
 BAND_HIGH_PCT = 0.08         # +8% dari fair_mid
 
+# Label user-facing — pakai bahasa kasual, langsung, awam-friendly.
+POS_BAND_LOW = 'murah'       # current < fair_low: harga di bawah pita → pasar menilai lebih murah
+POS_BAND_MID = 'netral'      # dalam pita
+POS_BAND_HIGH = 'mahal'      # current > fair_high: harga di atas pita → pasar menilai lebih mahal
+
 
 def fair_value(ohlcv):
     """Dict {sym: {fair_mid, fair_low, fair_high, current, pos_band, target_20d, stop_loss, edge_pct}}.
@@ -40,18 +46,18 @@ def fair_value(ohlcv):
             continue
         close = df['Close']
         current = float(close.iloc[-1])
-        # Fair value: median close 252 hari (atau sepanjang data, mana yang ada)
+        # Acuan: median close 252 hari (atau sepanjang data, mana yang ada)
         window = close.tail(min(FAIR_LOOKBACK, len(close)))
         fair_mid = float(window.median())
         fair_low = fair_mid * (1 - BAND_LOW_PCT)
         fair_high = fair_mid * (1 + BAND_HIGH_PCT)
-        # Posisi current vs fair_mid
+        # Posisi current vs pita fair
         if current < fair_low:
-            pos_band = 'di bawah wajar'
+            pos_band = POS_BAND_LOW
         elif current > fair_high:
-            pos_band = 'di atas wajar'
+            pos_band = POS_BAND_HIGH
         else:
-            pos_band = 'wajar'
+            pos_band = POS_BAND_MID
         # Target 20d: backtest combo m+f top-5 median spread
         target_20d = current * (1 + EDGE_UP)
         # Stop-loss: 52-week low
@@ -69,3 +75,4 @@ def fair_value(ohlcv):
             'edge_pct': round(edge_pct * 100, 2),
         }
     return out
+
