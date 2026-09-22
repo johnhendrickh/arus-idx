@@ -11,6 +11,29 @@ Trader ritel IDX dapat banyak sinyal tapi nggak ada yang jujur soal akurasi — 
 
 ---
 
+## Quickstart (5 menit)
+
+```bash
+git clone https://github.com/johnhendrickh/arus-idx.git ~/arus && cd ~/arus
+cp .env.example .env && nano .env          # isi SECTORS_API_KEY (wajib), Telegram (opsional)
+docker compose up -d --build               # atau: python -m venv .venv && .venv/bin/pip install -r requirements.txt && .venv/bin/python -m app.server
+# buka http://localhost:8787 → 19 saham live, sort by Asing 5D
+```
+
+**Status live (Senin 22 Sep 2026, IHSG regime DOWN):**
+- Server: `python -m app.server` port 8787 ✅ running
+- Scan: 19 rows, skor 0-100, kolom ASING 5D, status WAIT/SKIP ✅ running
+- Backtest: combo momentum+fundamental IC +0.113, top vs bot 67%, n=12 ✅ reproducible
+
+## Video demo
+
+- **Teaser (62 detik, public)** — [YouTube URL akan dipasang setelah upload]
+- **Judging (116 detik, unlisted)** — [YouTube URL akan dipasang setelah upload]
+
+Lihat `~/arus-video/ARUS_teaser_anim_v8.mp4` (62s) dan `~/arus-video/ARUS_judging_v1.mp4` (116s) untuk source file.
+
+---
+
 ## Kenapa ARUS beda
 
 | Alat sinyal biasa | ARUS |
@@ -302,7 +325,45 @@ lengkap: [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
 Cron harian dipasang di **host** (bukan di container) — lihat DEPLOY.md.
 
+## Hasil run reproducible
 
+Sample output dari Senin 22 Sep 2026 — biar judges bisa verify sendiri:
+
+**`python -m app.main` (scan CLI):**
+```
+ARUS SCAN — 2026-09-22 05:54 WIB | regime IHSG: DOWN → mode tunggu | margin +0.81%
+----------------------------------------------------------
+PTBA   skor 0.71  WAIT (IHSG<EMA50)
+BBRI   skor 0.70  WAIT (IHSG<EMA50)
+AKRA   skor 0.64  WAIT (IHSG<EMA50)
+ANTM   skor 0.63  WAIT (IHSG<EMA50)
+INTP   skor 0.58  SKIP (illiquid)
+BBNI   skor 0.56  WAIT (IHSG<EMA50)
+```
+
+**`scripts/bt_proxy.py` (backtest head — n=12 rebalance):**
+```
+== combo momentum+fundamental (gate ON) ==
+momentum     IC=+0.008 t=  0.2 (n=12) | top>bot 58% (n=12) med-spread +2.28%
+fundamental  IC=+0.126 t=  1.2 (n=12) | top>bot 42% (n=12) med-spread -1.80%
+COMBO        IC=+0.113 t=  1.4 (n=12) | top>bot 67% (n=12) med-spread +1.65%
+```
+
+**`python -m app.server` + `GET /api` (web screener):**
+```json
+{"regime": "DOWN", "regime_margin_pct": 0.8, "asof": "2026-09-21",
+ "rows": [{"symbol": "PTBA", "score": 0.71, ...}, ...]}
+```
+
+## Keterbatasan yang kami catat (honest)
+
+- **Sample kecil**: n=12 rebalance combo, n=23 flow. Statistik belum definitif.
+- **Free API**: 62 bar history max. Backtest gate pakai IHSG-proxy (corr 0.933) sebagai workaround.
+- **Pilar flow belum terbukti**: IC rendah (-0.126 di kalibrasi). Karena itu flow jadi kolom info, bukan sinyal.
+- **Regime DOWN saat ini**: margin +0.81% (di bawah buffer 1% EMA50). Semua status WAIT — by design.
+- **Universe statis 21 saham**: pilih manual sekali. `fetch_one.py MEDC` (~46 kredit) untuk tambah.
+
+Detail + angka + metode di [`docs/BACKTEST.md`](docs/BACKTEST.md).
 
 ## Aturan main kami sendiri
 
