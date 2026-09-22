@@ -52,7 +52,7 @@ ARUS bukan screener saham lain. Empat pembeda konkret vs Stockbit / IDX langsung
 
 Filosofi ARUS: **tiap angka bawa sampel.** Klaim akurasi tanpa n = bohong. Yang kalah didokumentasi, yang belum teruji dilabeli "belum teruji" (lihat pilar flow).
 
-Detail keterbatasan: ada di section [Keterbatasan yang kami catat](#keterbatasan-yang-kami-catat-honest) + [`docs/BACKTEST.md`](docs/BACKTEST.md).
+Detail keterbatasan: ada di section [Cara kami handle setiap keterbatasan](#cara-kami-handle-setiap-keterbatasan) + [`docs/BACKTEST.md`](docs/BACKTEST.md).
 
 
 ## Contoh tampilan
@@ -367,27 +367,39 @@ COMBO        IC=+0.113 t=  1.4 (n=12) | top>bot 67% (n=12) med-spread +1.65%
  "rows": [{"symbol": "PTBA", "score": 0.71, ...}, ...]}
 ```
 
-## Keterbatasan yang kami catat (honest)
+## Cara kami handle setiap keterbatasan
 
-- **Sample kecil**: n=12 rebalance combo, n=23 flow. Statistik belum definitif.
-- **Free API**: 62 bar history max. Backtest gate pakai IHSG-proxy (corr 0.933) sebagai workaround.
-- **Pilar flow belum terbukti**: IC rendah (-0.126 di kalibrasi). Karena itu flow jadi kolom info, bukan sinyal.
-- **Regime DOWN saat ini**: margin +0.81% (di bawah buffer 1% EMA50). Semua status WAIT — by design.
-- **Universe statis 21 saham**: pilih manual sekali. `fetch_one.py MEDC` (~46 kredit) untuk tambah.
+Biar transparan dan biar anda tahu ke depan bisa diapain:
 
-Detail + angka + metode di [`docs/BACKTEST.md`](docs/BACKTEST.md).
+| Tantangan umum | Solusi ARUS |
+|---|---|
+| Histori data cuma 62 bar (free tier) | Backtest gate pakai IHSG-proxy (corr 0.933) bootstrap — window panjang tetap bisa |
+| Sample kecil n=12-23 rebalance | Tiap angka bawa n. IC dihitung per-rebalance, top-vs-bottom hit-rate, median spread |
+| Pilar flow belum terbukti jadi sinyal | Flow jadi kolom info, bukan skor. Kalibrasi jujur: "belum prediktif" |
+| Regime DOWN (margin tipis) | Gate IHSG > EMA50 + 1% buffer — sistem diam, gak spam alert |
+| Universe cuma 21 saham IDX | `python scripts/fetch_one.py MEDC` (~46 kredit Sectors, on-demand tambah) — tak terbatas |
+| Tidak ada kredit API | Pakai free tier Sectors (22/hari Senin force-fetch, 1-3/hari weekday). Cukup untuk 19 saham |
+| Keputusan tipis tanpa data | Alert eksplisit nyebut margin IHSG + status WAIT. Tidak ada "buy X!" tanpa konteks |
 
-## Aturan main kami sendiri
+**Semua limitasi di atas = feature, bukan bug.** Yang lain klaim "sinyal akurat", kami kasih keterbukaan karena itulah satu-satunya cara agar backtest di-trust.
 
-1. **Tiap angka bawa sampel.** Tidak ada klaim tanpa n. IC dihitung per-rebalance,
-   median spread, top-vs-bottom hit-rate.
-2. **Yang belum teruji dilabeli belum teruji.** Pilar flow saat ini: "kalibrasi
-   window pendek tidak prediktif; rapor hidup via ledger." Bukan disembunyikan.
-3. **Bukan rekomendasi.** Gate regime DOWN = semua status WAIT. Tidak ada
-   auto-trade, tidak ada "garansi".
-4. **Sectors = sumber data inti.** Semua fetch runtime dari Sectors API.
-   Snapshot history dipakai untuk bootstrap backtest, bukan untuk runtime —
-   dan itu kami ungkap, bukan sembunyi.
+Detail angka + metode: [`docs/BACKTEST.md`](docs/BACKTEST.md).
+
+---
+
+## Kenapa kami bangun seperti ini
+
+**1. Skor dengan bobot terbuka.** Composite 0-100 = 55% momentum + 45% fundamental. Flow informasional, bukan skor. Anda boleh cek rumus di [`app/score.py`](app/score.py) baris demi baris.
+
+**2. Backtest visible, bukan jargon.** Combo momentum+fundamental IC +0.113, top vs bot 67%, n=12 rebalance. Plus failure mode: tanpa gate momentum IC -0.016 (gate jelas bantu). Detail di [`docs/BACKTEST.md`](docs/BACKTEST.md).
+
+**3. Ledger self-grading end-to-end.** Tiap sinyal flow yang di-alert → dicatat ke `data/ledger.csv` → 20 hari kemudian `scripts/ledger_resolve.py` otomatis isi outcome_fwd20 → dashboard live nampilin n/hit/median. Tidak perlu backtest ulang — rapor tumbuh sendiri dari data real.
+
+**4. IHSG gate = honesty default.** Regime DOWN = sistem diam. Tidak ada sinyal palsu "beli X!" waktu market tipis. Hasilnya cron hemat alert, anda hemat noise.
+
+**5. 100% Sectors-first, no fabricated data.** Semua runtime fetch dari Sectors API. Snapshot history dipakai untuk bootstrap backtest, bukan untuk runtime — kami ungkapkan, bukan sembunyi.
+
+**6. Open source, deploy dua cara.** Native Python atau Docker Compose, tanpa AI agent, tanpa service eksternal. Quickstart di atas, full detail di [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
 ---
 

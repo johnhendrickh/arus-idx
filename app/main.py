@@ -61,6 +61,23 @@ def scan_full():
     ctx = flow_context(broker_map, foreign_map)
     return rows, reg, ctx
 
+def record_to_ledger(rows, dry_run=False):
+    """Catat sinyal flow ke data/ledger.csv. Idempotent per (date, sym, signal_type).
+    Hanya rows yang punya flow context yang dicatat (kualitas > kuantitas)."""
+    _, broker_map, foreign_map, _ = load_cache()
+    ctx = flow_context(broker_map, foreign_map)
+    today = pd.Timestamp.now().strftime('%Y-%m-%d')
+    recorded = 0
+    for t, v, st in rows:
+        sym = t.replace('.JK', '')
+        if sym not in ctx:
+            continue
+        ledger.record(today, sym, 'flow_alert', v, None, ctx[sym][:80])
+        recorded += 1
+    if recorded:
+        mode = 'dry-run' if dry_run else 'live alert'
+        print(f"--- ledger: recorded {recorded} signals ({mode}) ---")
+
 if __name__ == '__main__':
     rows, reg = scan()
     # margin IHSG vs EMA50 utk konteks alert
@@ -78,26 +95,4 @@ if __name__ == '__main__':
     print('\n--- alert preview ---\n' + msg)
     if cfg.TELEGRAM_ENABLED:
         alert.send(msg)
-        # Catat ke ledger: hanya jika regime UP (ada alert) dan ada rows WAIT/OK dengan flow context
-        ohlcv, broker_map, foreign_map, _ = load_cache()
-        ctx = flow_context(broker_map, foreign_map)
-        today = pd.Timestamp.now().strftime('%Y-%m-%d')
-        for t, v, st in rows:
-            sym = t.replace('.JK', '')
-            if sym not in ctx: continue  # skip yang gak ada flow context
-            note = ctx[sym][:80]
-            ledger.record(today, sym, 'flow_alert', v, None, note)
-        print(f"\n--- ledger: recorded {sum(1 for t,_,_ in rows if t.replace('.JK','') in ctx)} signals ---")
-    else:
-        # dry-run mode (Telegram off): catat juga, biar ledger bisa di-test
-        ohlcv, broker_map, foreign_map, _ = load_cache()
-        ctx = flow_context(broker_map, foreign_map)
-        today = pd.Timestamp.now().strftime('%Y-%m-%d')
-        n = 0
-        for t, v, st in rows:
-            sym = t.replace('.JK', '')
-            if sym not in ctx: continue
-            note = ctx[sym][:80]
-            ledger.record(today, sym, 'flow_alert', v, None, note)
-            n += 1
-        if n: print(f"\n--- ledger: recorded {n} signals (dry-run, TELEGRAM_ENABLED=False) ---")
+    record_to_ledger(rows, dry_run=not cfg.TELEGRAM_ENABLED)
