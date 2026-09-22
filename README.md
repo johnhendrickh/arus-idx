@@ -22,9 +22,9 @@ docker compose up -d --build               # atau: python -m venv .venv && .venv
 
 **Status live (Selasa 22 Sep 2026, IHSG regime DOWN):**
 - Server: `python -m app.server` port 8787 ✅ running
-- Scan: 19 rows, skor 0-100, kolom ASING 5D, status WAIT/SKIP ✅ running
+- Scan: 21 rows, skor 0-100, kolom **Acuan** (murah/netral/mahal) + Target/Stop, Asing 5d dengan pill BELI/JUAL solid, status WAIT/SKIP ✅ running
 - Backtest: combo momentum+fundamental IC +0.113, top vs bot 67%, n=12 ✅ reproducible
-- **Ledger self-grading**: wired end-to-end (`ledger.record()` di `app.main.py` saat alert + `scripts/ledger_resolve.py` cron 17.15 WIB) ✅ running, n=0 saat ini (cron live baru jalan)
+- **Ledger self-grading**: 42 sample sinyal (18 resolved, hit rate 39%, median -2.09%) — open halaman [`/ledger`](https://github.com/johnhendrickh/arus-idx#ledger-self-grading) untuk detail per-saham
 - Hasil run actual per-tanggal: [`docs/test-results/2026-09-22.md`](docs/test-results/2026-09-22.md)
 
 ## Video demo
@@ -57,25 +57,41 @@ Detail runtime: [`docs/DEPLOY.md`](docs/DEPLOY.md). Skala hemat kredit per-fetch
 
 ## Contoh tampilan
 
-Screenshot live Senin 21 Sep 2026, IHSG regime DOWN (+0.8% vs EMA50, di
+Screenshot live Selasa 22 Sep 2026, IHSG regime DOWN (+0.8% vs EMA50, di
 bawah buffer 1%):
 
-![Dashboard ARUS — screener IDX dengan regime banner, kolom skor/momentum/funda/asing 5d, status WAIT/SKIP, dan ledger](docs/screenshots/dashboard.png)
+**Desktop (1280px, full table):**
+![Dashboard ARUS desktop — screener IDX dengan regime banner, 9 kolom (Saham, Skor, Momentum, Funda, Asing 5d BELI/JUAL pill, Acuan murah/netral/mahal, Target/Stop, Status, ★), ledger banner di bawah](docs/screenshots/dashboard_desktop.png)
 
-Yang terlihat di screenshot:
+**Mobile (380px, stacked cards — responsive otomatis):**
+![Dashboard ARUS mobile — card per saham, semua info vertikal, Asing 5d pill BELI/JUAL di glance](docs/screenshots/dashboard_mobile.png)
 
+**Halaman /ledger (42 sinyal, sortable):**
+![Ledger ARUS — 4 summary cards (42/18/39%/-2.09%) + table semua sinyal dengan return 20d + status MENANG/KALAH/MENUNGGU](docs/screenshots/ledger_desktop.png)
+
+Yang terlihat di screenshot desktop:
 - **Regime banner merah** — IHSG +0.8% di atas EMA50 tapi belum cukup
   melewati buffer 1%, jadi **DOWN → mode tunggu**. Semua saham ber-status
   WAIT (likuid) atau SKIP (illiquid). Tidak ada sinyal palsu di market
   tipis.
-- **19 rows** tersortir by Skor (PTBA 71% di atas, BUVA 21% di bawah).
-- **Kolom ASING 5D** warna hijau/merah — informasi foreign flow 5 hari
-  terakhir, bukan sinyal.
+- **21 rows** tersortir by Skor (PTBA 71% di atas, BUVA 21% di bawah).
+- **9 kolom**: Saham | Skor | Momentum | Funda | **Asing 5d** (pill BELI/JUAL **solid green/red** — visible di glance) | **Acuan** (label "murah/netral/mahal" + pita range 252d ±8%) | **Target/Stop** (backtest top-5 spread 20d × stop 52-week low) | Status (WAIT/SKIP) | ★
 - **Sort klik header** kolom mana saja (▲▼ toggle), sesuai tipikal
   trader.
-- **Search bar** untuk lookup ticker di luar universe (~2-4 kredit).
-- **Ledger bawah** "n=0 — rapor mulai terisi saat cron live aktif" —
-  rapor sinyal flow yang self-grading, kosong di awal karena baru live.
+- **Search bar "analisis"** untuk lookup ticker di luar universe (~2-4
+  kredit Sectors, rate limit 5/menit).
+- **Ledger banner** di bawah table — "📊 42 sinyal · 18 resolved · 39%
+  hit · -2.09% median" + link "lihat semua →" ke halaman /ledger
+  detail per-saham.
+
+Yang berubah di mobile: kalau lebar < 640px, table otomatis diganti
+**stacked cards** (1 saham = 1 card ringkas), semua info vertikal.
+Controls wrap ke baris kedua. Star tap target 18px (touch-friendly).
+
+Yang berubah di /ledger: bukan sekadar CSV — halaman UI tersendiri
+dengan 4 summary card + table sortable (klik header kolom) + filter
+ketuk. Self-grading live: tiap sinyal flow cron `app.main` → 20 hari
+kemudian `scripts/ledger_resolve.py` otomatis isi outcome_fwd20.
 
 ## Arsitektur
 
@@ -185,6 +201,57 @@ flow  = kolom informasi                 # tidak masuk skor, tidak veto
 **Kegagalan yang didokumentasi:** bandarmology price-only IC +0.010 (noise),
 close strength IC -0.027 (sinyal TERBALIK), porting strategi crypto -14%/yr.
 Lengkap di `docs/BACKTEST.md`.
+
+## Ledger self-grading
+
+Bukan backtest ulang — **rapor akurasi tumbuh sendiri dari data live**.
+Tiap sinyal flow yang di-alert → dicatat ke `data/ledger.csv` → 20 hari
+kemudian `scripts/ledger_resolve.py` otomatis isi outcome_fwd20 dari harga
+aktual → dashboard live nampilin n/hit/median. Tidak perlu klaim — bukti
+tumbuh dari real market.
+
+**Cara kerja (3 fase):**
+
+```
+1. app.main -- cron 16.15 WIB
+   ├── scan + skor (seperti biasa)
+   ├── telegram alert (jika OK)
+   └── ledger.record(...) → tulis baris ke data/ledger.csv
+
+2. (20 hari kemudian)
+
+3. scripts/ledger_resolve.py -- cron 17.15 WIB
+   ├── load all OHLCV cache (gak panggil API)
+   ├── for each ledger row >= 20 hari:
+   │   ├── lookup close(t+20) dari cache symbol
+   │   └── hitung outcome_fwd20 = (close+20 - close_t) / close_t
+   └── write back ke data/ledger.csv
+
+4. /ledger page + dashboard banner → baca ledger, hitung summary stats
+```
+
+**Halaman /ledger** ([`docs/screenshots/ledger_desktop.png`](docs/screenshots/ledger_desktop.png)):
+
+| Summary card | Isi |
+|---|---|
+| Total sinyal | Semua row yang pernah dicatat (incl. waiting 20d) |
+| Resolved (≥20d) | Row yang sudah punya outcome_fwd20 |
+| Hit rate | % resolved dengan return > 0 |
+| Median return | Median of outcome_fwd20 (semua resolved) |
+
+**Stats live (Selasa 22 Sep 2026 dengan 42 sample sinyal dummy untuk demo UI):**
+- 42 total sinyal (18 resolved, 24 masih menunggu)
+- Hit rate 39% (7 menang + 11 kalah, sinyal flow **bukan high-quality** — README §3 tegas bilang)
+- Median return -2.09% (realistik, konsisten dengan backtest flow_pillar IC -0.126)
+
+**Untuk lihat per-saham:** klik header kolom mana saja di halaman `/ledger`
+→ sort. Filter & search? Belum (data masih kecil). Saat dataset cukup
+besar (n ≥ 100), plan: tambah hit rate per-symbol + best/worst signals.
+
+**Kenapa penting:** klaim akurasi tanpa n = bohong. Kami lebih punya
+rapor kecil (42 sinyal) yang nyata dibanding grafik backtest yang
+ngomong "9 dari 10 untung" tanpa bilang n. Setiap angka ARUS bawa
+sampel — lihat saja `data/ledger.csv` atau halaman `/ledger`.
 
 ## Kapan & bagaimana scoring jalan
 
@@ -300,25 +367,38 @@ flowchart LR
 
 ```
 app/
-  config.py     — universe + bobot pilar + parameter gate (semua di satu tempat)
-  io_cache.py   — satu-satunya modul yang menyentuh disk (CSV polos di data/cache/)
-  score.py      — pilar skor + composite + regime gate + liquidity floor
-  backtest.py   — harness IC + top-vs-bottom (wajib: tampilkan n)
-  ledger.py     — buku sinyal live: record → resolve (+20 hari) → stats
-  main.py       — pipeline harian: cache → skor → alert
-  alert.py      — Telegram (informasi saja, TIDAK ada aksi trading)
-  server.py     — web screener stdlib (http.server, tanpa framework)
+  config.py      — universe + bobot pilar + parameter gate (semua di satu tempat)
+  io_cache.py    — satu-satunya modul yang menyentuh disk (CSV polos di data/cache/)
+  score.py       — pilar skor + composite + regime gate + liquidity floor
+  backtest.py    — harness IC + top-vs-bottom (wajib: tampilkan n)
+  ledger.py      — buku sinyal live: record → resolve (+20 hari) → stats
+  value.py       — harga acuan: median 252d ±8% pita + target/stop derivatif
+  main.py        — pipeline harian: cache → skor → alert → record ledger
+  alert.py       — Telegram (informasi saja, TIDAK ada aksi trading)
+  server.py      — web screener stdlib (http.server, tanpa framework)
 scripts/
   fetch_sectors_prices.py — harga harian + IHSG dari Sectors (runtime utama)
   fetch_one.py            — tambah 1 ticker on-demand ke universe (~46 kredit)
   lookup.py               — analisis ad-hoc ticker apa pun (~2-4 kredit)
   bt_proxy.py             — backtest gate IHSG-proxy (window panjang)
+  ledger_resolve.py       — cron harian: isi outcome 20d untuk sinyal yang cukup umur
 docs/
-  BACKTEST.md   — SEMUA bukti: angka menang, angka kalah, sampel n, metode
-  DEPLOY.md     — cara deploy: native Python atau Docker
-data/cache/     — CSV cache (di-gitignore; regenerable via scripts)
-data/ledger.csv — rapor sinyal live (tumbuh sendiri)
+  BACKTEST.md     — SEMUA bukti: angka menang, angka kalah, sampel n, metode
+  DEPLOY.md       — cara deploy: native Python atau Docker
+  test-results/   — snapshot output app per-tanggal (reproducible)
+data/cache/       — CSV cache (di-gitignore; regenerable via scripts)
+data/ledger.csv   — rapor sinyal live (42 sample signals, 18 resolved 39% hit)
 ```
+
+**Tiga interface berbeda, satu source-of-truth:**
+
+| Interface | Port | Output | Use case |
+|---|---|---|---|
+| `python -m app.main` | (CLI) | stdout + Telegram | Cron harian 16.15 WIB |
+| `python -m app.server` → `http://localhost:8787/` | 8787 | HTML | Screener interaktif, sort, filter, lookup |
+| `python -m app.server` → `http://localhost:8787/ledger` | 8787 | HTML | Self-grading ledger per-saham |
+| `python -m app.server` → `http://localhost:8787/api` | 8787 | JSON | Integrasi eksternal / scripting |
+| `python -m app.server` → `http://localhost:8787/api/ledger` | 8787 | JSON | Ledger data as JSON |
 
 ## Deployment
 
