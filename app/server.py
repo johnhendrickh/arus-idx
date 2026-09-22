@@ -21,12 +21,17 @@ def build_rows():
     pm = sc.momentum_pillar(ohlcv).iloc[-1]
     pf = sc.fundamental_pillar(ohlcv, fund).iloc[-1] if fund is not None else None
     # konteks flow per saham (informasi murni, tidak masuk skor)
+    # foreign_5d: net (untuk sort + filter), buy/sell (untuk visual pill BELI/JUAL mobile)
     fnotes = {}
+    fbuy = {}
+    fsell = {}
     for s in fm:
         f = fm[s]
         if f is None or len(f) < 25: continue
-        f5 = f['net_foreign_inflow'].tail(5).sum()
-        fnotes[s + '.JK'] = round(float(f5)/1e9, 1)   # IDR miliar
+        s5 = f.sort_values('date').tail(5)
+        fnotes[s + '.JK'] = round(float(s5['net_foreign_inflow'].sum())/1e9, 1)   # IDR miliar
+        fbuy[s + '.JK'] = round(float(s5['foreign_buy_idr'].sum())/1e9, 1)
+        fsell[s + '.JK'] = round(float(s5['foreign_sell_idr'].sum())/1e9, 1)
     # Fair value + edge per saham (hanya untuk OK rows yg di frontend)
     fv = value.fair_value(ohlcv)
     rows = []
@@ -38,6 +43,8 @@ def build_rows():
             'fundamental': round(float(pf.get(t, np.nan)), 2) if pf is not None and pd.notna(pf.get(t)) else None,
             'liquid': bool(floor.get(t, False)),
             'foreign_5d_idrb': fnotes.get(t),
+            'foreign_buy_5d': fbuy.get(t),
+            'foreign_sell_5d': fsell.get(t),
             'fair': fv_row,
         })
     led = ledger.stats('flow_alert') or {'n': 0}
@@ -143,7 +150,7 @@ details .x b{color:#e6e6e6}.x .q{color:#79c0ff}.x .a{color:#7ee787}
 <br><br>
 <span class=q>Momentum</span> = konsistensi arah harga 20/60/120 hari, disesuaikan volatilitas. <i>Naik tinggi tapi naik dadak → tidak dinilai.</i>
 <br><span class=q>Fundamental</span> = ROE + laba/harga, dengan penalti untuk growth-trap (pertumbuhan revenue tinggi yang sering menipu di IDX).
-<br><span class=q>Asing 5d</span> = uang investor asing masuk (+) atau keluar (−) 5 hari terakhir, dari data transaksi Sectors. <b>Kolom informasi, bukan sinyal</b> — kami mengujinya sebagai sinyal dan hasilnya negatif (detail di README), jadi ditampilkan apa adanya.
+<br><span class=q>Asing 5d</span> = uang investor asing masuk (+) atau keluar (−) 5 hari terakhir, dari data transaksi Sectors. Pill <span class=g>BELI X%</span> / <span class=r>JUAL X%</span> = proporsi gross beli vs jual 5 hari, warna sesuai NET (positif=green, negatif=red). <b>Kolom informasi, bukan sinyal</b> — kami mengujinya sebagai sinyal dan hasilnya negatif (detail di README), jadi ditampilkan apa adanya.
 <br><span class=q>Acuan</span> = posisi harga saat ini vs median close 252 hari (±8% pita). <span class=g>murah</span> artinya harga di bawah pita bawah — pasar menilai lebih murah dari setahun ke belakang. <span class=r>mahal</span> sebaliknya. <span class=m>netral</span> = dalam pita. Bukan saran beli/jual, hanya konteks.
 <br><span class=q>Target / Stop</span> = Target = harga +20d pakai backtest combo momentum+fundamental median spread +1.65%. Stop = 52-week low. Keduanya bukan prediksi ARUS, hanya turunan dari backtest & data historis.
 <br><span class=q>Status</span> = <span class=a>OK</span>: likuid &amp; IHSG di atas EMA50 → boleh dipertimbangkan. <span style="color:#f4a6b8">WAIT</span>: IHSG lemah → tunggu. <span style="color:#c9d1d9">SKIP</span>: likuiditas rendah → hindari.
@@ -155,7 +162,17 @@ details .x b{color:#e6e6e6}.x .q{color:#79c0ff}.x .a{color:#7ee787}
 let D=null;let WL=new Set(JSON.parse(localStorage.getItem('arus-watchlist')||'[]'));
 fetch('/api').then(r=>r.json()).then(d=>{D=d;render();});
 function fmtForeign(r){if(r.foreign_5d_idrb==null)return null;const a=Math.abs(r.foreign_5d_idrb);
- const s=a>=1000?(a/1000).toFixed(2)+' T':a.toFixed(0)+' M';return {raw:r.foreign_5d_idrb,txt:(r.foreign_5d_idrb>0?'+':'−')+s+' IDR'};}
+ const s=a>=1000?(a/1000).toFixed(2)+' T':a.toFixed(0)+' M';
+ const buy=r.foreign_buy_5d, sell=r.foreign_sell_5d;
+ // pill BELI/JUAL/NETRAL: dominan = arah mana yg lebih besar 5d gross; warna sesuai NET (sign)
+ let pill=null;
+ if(buy!=null&&sell!=null&&(buy+sell)>0){
+   const dom=buy>=sell?'BELI':'JUAL';
+   const pct=Math.round(buy/(buy+sell)*100);
+   const cls=r.foreign_5d_idrb>0?'g':(r.foreign_5d_idrb<0?'r':'m');
+   pill=`<span class="pill ${cls}" title="gross 5d: beli ${buy>=1000?(buy/1000).toFixed(1)+' T':buy.toFixed(0)+' M'} / jual ${sell>=1000?(sell/1000).toFixed(1)+' T':sell.toFixed(0)+' M'}">${dom} ${pct}%</span>`;
+ }
+ return {raw:r.foreign_5d_idrb,txt:(r.foreign_5d_idrb>0?'+':'−')+s+' IDR',pill:pill};}
 let SORTK='score',SORTD=-1;   // klik header: kolom, arah (−1 = desc dulu)
 function render(){
 const d=D;
@@ -197,7 +214,7 @@ const fmtTarget=(r)=>{
 document.getElementById('tb').innerHTML=rows.map(r=>{
 const st=stOf(r);const stc=st==='OK'?'g':(st==='WAIT'?'r':'m');
 const f=fmtForeign(r);const fg=f==null?'—':(f.raw>0?`<span class=g>${f.txt}</span>`:`<span class=r>${f.txt}</span>`);
-return `<tr><td><b>${r.symbol}</b></td><td>${bar(r.score)}</td><td>${bar(r.momentum)}</td><td>${bar(r.fundamental)}</td><td>${fg}</td><td>${fmtFair(r)}</td><td>${fmtTarget(r)}</td><td><span class="pill ${stc}">${st}</span></td><td><span class="star ${WL.has(r.symbol)?'on':''}" data-s=${r.symbol}>${WL.has(r.symbol)?'★':'☆'}</span></td></tr>`}).join('');
+return `<tr><td><b>${r.symbol}</b></td><td>${bar(r.score)}</td><td>${bar(r.momentum)}</td><td>${bar(r.fundamental)}</td><td>${fg}${(f&&f.pill)?`<div style="margin-top:4px">${f.pill}</div>`:''}</td><td>${fmtFair(r)}</td><td>${fmtTarget(r)}</td><td><span class="pill ${stc}">${st}</span></td><td><span class="star ${WL.has(r.symbol)?'on':''}" data-s=${r.symbol}>${WL.has(r.symbol)?'★':'☆'}</span></td></tr>`}).join('');
 // Mobile card view — same data, stacked layout
 document.getElementById('cb').innerHTML=rows.map(r=>{
   const st=stOf(r);const stc=st==='OK'?'g':(st==='WAIT'?'r':'m');
@@ -208,7 +225,7 @@ document.getElementById('cb').innerHTML=rows.map(r=>{
   const target=fv?`<span class=card-val>${fmtPrice(fv.target_20d)} <span style="color:#8b949e">/</span> <span class=r>${fmtPrice(fv.stop_loss)}</span></span>`:'—';
   return `<div class="card">
 <div class="card-head"><div class="card-sym">${r.symbol}<span class="star ${WL.has(r.symbol)?'on':''}" data-s=${r.symbol} style="margin-left:8px;font-size:16px">${WL.has(r.symbol)?'★':'☆'}</span></div><div class="card-score">${bar(r.score)}<span class="pill ${stc}" style="margin-left:6px">${st}</span></div></div>
-<div class="card-row"><span class=card-lbl>Asing 5d</span><span class=card-val>${f?`${f.raw>0?'+':'−'}${f.txt}`:'—'}</span></div>
+<div class="card-row"><span class=card-lbl>Asing 5d</span><span class=card-val>${f?`${f.raw>0?'+':'−'}${f.txt}`:'—'}${f&&f.pill?`<div style="margin-top:4px">${f.pill}</div>`:''}</span></div>
 <div class="card-row"><span class=card-lbl>Acuan</span>${acuanRange}</div>
 <div class="card-row"><span class=card-lbl>Acuan (status)</span><span class=card-val>${acuanBadge}</span></div>
 <div class="card-row"><span class=card-lbl>Target / Stop</span>${target}</div>
