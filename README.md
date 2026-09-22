@@ -37,12 +37,22 @@ Lihat `~/arus-video/ARUS_teaser_anim_v8.mp4` (62s) dan `~/arus-video/ARUS_judgin
 
 ## Kenapa ARUS beda
 
-| Alat sinyal biasa | ARUS |
-|---|---|
-| "Sinyal beli X!" tanpa bukti | IC, hit-rate, dan jumlah sampel (n) ditampilkan bersama skor |
-| Klaim akurasi 90% | Backtest dengan fee + slippage, n eksplisit, kegagalan didokumentasi |
-| Bandarmology dari pola harga (tebakan) | Data broker & foreign flow **asli** dari Sectors API |
-| "Sinyal spam tiap hari" | Gate regime IHSG (EMA50 + buffer 1%) — diam saat market tipis |
+ARUS bukan screener saham lain. Empat pembeda konkret vs Stockbit / IDX langsung / TradingView IDX:
+
+| | Stockbit & sejenisnya | TradingView IDX | ARUS |
+|---|---|---|---|
+| **Skor** | Tidak ada — chart + indikator terpisah | Tidak ada — indikator visual saja | Composite 0-100, bobot exposed (momentum 55% + fundamental 45%) |
+| **Bukti akurasi** | Tidak ada backtest publik | Tidak ada — indikator backtest opsional, default off | **Backtest visible per-pillar**: IC +0.113, top vs bot 67%, n=12 ([detail](docs/BACKTEST.md)) |
+| **Flow informasional** | Ada, tapi proprietary bandarmology | Tidak ada | Broker summary + foreign flow 5D, dari Sectors API, kolom info-only (tidak masuk skor, tidak auto-trade) |
+| **Auto-alert** | Push notif harga — bisa spam | Alert indikator — bisa spam | Telegram 16.15 WIB — **diam kalau IHSG < EMA50 + buffer 1%** (regime DOWN = 0 alert) |
+| **Self-grading** | Tidak ada | Tidak ada | **Ledger**: tiap sinyal flow dicatat, diukur 20 hari kemudian, rapor akurasi tumbuh sendiri |
+| **Source** | Closed-source, sebagian berbayar | Closed-source, langganan | Open source, self-deploy via Docker atau native Python |
+| **Sample jujur** | Klaim akurasi tanpa n | Tidak ada sample | **n=12-18 rebalance, exposed di setiap angka** — bisa di-verify sendiri |
+
+Filosofi ARUS: **tiap angka bawa sampel.** Klaim akurasi tanpa n = bohong. Yang kalah didokumentasi, yang belum teruji dilabeli "belum teruji" (lihat pilar flow).
+
+Detail keterbatasan: ada di section [Keterbatasan yang kami catat](#keterbatasan-yang-kami-catat-honest) + [`docs/BACKTEST.md`](docs/BACKTEST.md).
+
 
 ## Contoh tampilan
 
