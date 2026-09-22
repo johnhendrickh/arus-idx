@@ -1,6 +1,1 @@
 date,symbol,signal_type,score,price_ref,note,outcome_fwd20
-2026-08-19,BBCA,flow_alert,0.65,6475.0,test resolved BBCA,-0.0193
-2026-08-25,TLKM,flow_alert,0.55,3500.0,test resolved TLKM,0.0234
-2026-09-01,ASII,flow_alert,0.62,5200.0,test resolved ASII,-0.0156
-2026-09-18,BBNI,flow_alert,0.71,3650.0,test pending BBNI,
-2026-09-19,ICBP,flow_alert,0.55,6800.0,test pending ICBP,
