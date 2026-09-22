@@ -20,10 +20,11 @@ docker compose up -d --build               # atau: python -m venv .venv && .venv
 # buka http://localhost:8787 → 19 saham live, sort by Asing 5D
 ```
 
-**Status live (Senin 22 Sep 2026, IHSG regime DOWN):**
+**Status live (Selasa 22 Sep 2026, IHSG regime DOWN):**
 - Server: `python -m app.server` port 8787 ✅ running
 - Scan: 19 rows, skor 0-100, kolom ASING 5D, status WAIT/SKIP ✅ running
 - Backtest: combo momentum+fundamental IC +0.113, top vs bot 67%, n=12 ✅ reproducible
+- **Ledger self-grading**: wired end-to-end (`ledger.record()` di `app.main.py` saat alert + `scripts/ledger_resolve.py` cron 17.15 WIB) ✅ running, n=0 saat ini (cron live baru jalan)
 - Hasil run actual per-tanggal: [`docs/test-results/2026-09-22.md`](docs/test-results/2026-09-22.md)
 
 ## Video demo

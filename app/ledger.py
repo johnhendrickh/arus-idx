@@ -20,12 +20,19 @@ def resolve(ohlcv):
     df = pd.read_csv(LEDGER)
     for i in df.index[df['outcome_fwd20'].isna()]:
         s = df['symbol'][i]
-        if s not in ohlcv: continue
-        c = ohlcv[s].Close
+        # symbol di ledger tanpa .JK (BBCA), di ohlcv dengan .JK (BBCA.JK) — normalize
+        candidates = [s, s + '.JK']
+        match = next((k for k in candidates if k in ohlcv), None)
+        if match is None: continue
+        c = ohlcv[match].Close
         d = pd.Timestamp(df['date'][i])
         after = c.loc[c.index >= d]     # fallback: baris pertama >= tanggal sinyal (weekend-safe)
         if len(after) > HOLD:
-            df.loc[i, 'outcome_fwd20'] = round(float(after.iloc[HOLD]/df['price_ref'][i] - 1), 4)
+            ref = df['price_ref'][i]
+            if pd.isna(ref) or ref == 0:
+                # kalau price_ref kosong, fallback ke close hari sinyal
+                ref = float(after.iloc[0])
+            df.loc[i, 'outcome_fwd20'] = round(float(after.iloc[HOLD]/ref - 1), 4)
     df.to_csv(LEDGER, index=False)
 
 def stats(signal_type=None):

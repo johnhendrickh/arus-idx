@@ -1,7 +1,7 @@
 """main.py — pipeline harian: cache -> skor -> tabel + (opsi) alert.
 Scan TIDAK memanggil API. Cron: 16.15 WIB setelah close."""
 import pandas as pd, numpy as np, sys
-from app import config as cfg, io_cache, score as sc, alert
+from app import config as cfg, io_cache, score as sc, alert, ledger
 
 def load_cache():
     ohlcv, broker_map, foreign_map = {}, {}, {}
@@ -73,7 +73,31 @@ if __name__ == '__main__':
           + (f' | margin {margin:+.2f}%' if margin is not None else ''))
     print('-'*58)
     for t, v, st in rows[:8]:
-        print(f'{t.replace(".JK",""):6s} skor {v:.2f}  {st}')
+        print(f'{t.replace(".JK","")}   skor {v:.2f}  {st}')
     msg = alert.format_alert(rows, reg, margin)
     print('\n--- alert preview ---\n' + msg)
-    if cfg.TELEGRAM_ENABLED: alert.send(msg)
+    if cfg.TELEGRAM_ENABLED:
+        alert.send(msg)
+        # Catat ke ledger: hanya jika regime UP (ada alert) dan ada rows WAIT/OK dengan flow context
+        ohlcv, broker_map, foreign_map, _ = load_cache()
+        ctx = flow_context(broker_map, foreign_map)
+        today = pd.Timestamp.now().strftime('%Y-%m-%d')
+        for t, v, st in rows:
+            sym = t.replace('.JK', '')
+            if sym not in ctx: continue  # skip yang gak ada flow context
+            note = ctx[sym][:80]
+            ledger.record(today, sym, 'flow_alert', v, None, note)
+        print(f"\n--- ledger: recorded {sum(1 for t,_,_ in rows if t.replace('.JK','') in ctx)} signals ---")
+    else:
+        # dry-run mode (Telegram off): catat juga, biar ledger bisa di-test
+        ohlcv, broker_map, foreign_map, _ = load_cache()
+        ctx = flow_context(broker_map, foreign_map)
+        today = pd.Timestamp.now().strftime('%Y-%m-%d')
+        n = 0
+        for t, v, st in rows:
+            sym = t.replace('.JK', '')
+            if sym not in ctx: continue
+            note = ctx[sym][:80]
+            ledger.record(today, sym, 'flow_alert', v, None, note)
+            n += 1
+        if n: print(f"\n--- ledger: recorded {n} signals (dry-run, TELEGRAM_ENABLED=False) ---")
