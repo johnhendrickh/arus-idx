@@ -68,6 +68,10 @@ th{color:#8b949e;font-size:11px;text-transform:uppercase;cursor:pointer;user-sel
 th:hover{color:#e6e6e6}th.sort-asc::after{content:" ▲"}th.sort-desc::after{content:" ▼"}
 .score{font-weight:700;font-size:15px}.pill{padding:2px 8px;border-radius:10px;font-size:11px;display:inline-block}
 .g{background:#1b4332;color:#95d5b2}.r{background:#4a1525;color:#f4a6b8}.m{background:#30363d;color:#c9d1d9}
+/* pill solid block — untuk distribusi BELI/JUAL agar visible di glance */
+.pill-buy{background:#238636;color:#fff;font-weight:700;letter-spacing:0.3px}
+.pill-sell{background:#b62324;color:#fff;font-weight:700;letter-spacing:0.3px}
+.pill-net{background:#6e7681;color:#fff;font-weight:700;letter-spacing:0.3px}
 .foot{margin-top:16px;color:#8b949e;font-size:12px;border-top:1px solid #21262d;padding-top:10px}
 .bar{height:7px;border-radius:4px;background:#30363d;width:70px;display:inline-block;vertical-align:middle;position:relative;margin-right:6px}
 .fill{height:7px;border-radius:4px;display:block}
@@ -164,12 +168,15 @@ fetch('/api').then(r=>r.json()).then(d=>{D=d;render();});
 function fmtForeign(r){if(r.foreign_5d_idrb==null)return null;const a=Math.abs(r.foreign_5d_idrb);
  const s=a>=1000?(a/1000).toFixed(2)+' T':a.toFixed(0)+' M';
  const buy=r.foreign_buy_5d, sell=r.foreign_sell_5d;
- // pill BELI/JUAL/NETRAL: dominan = arah mana yg lebih besar 5d gross; warna sesuai NET (sign)
+ // pill BELI/JUAL solid block — dominan = arah gross 5d; warna sesuai NET
  let pill=null;
  if(buy!=null&&sell!=null&&(buy+sell)>0){
    const dom=buy>=sell?'BELI':'JUAL';
    const pct=Math.round(buy/(buy+sell)*100);
-   const cls=r.foreign_5d_idrb>0?'g':(r.foreign_5d_idrb<0?'r':'m');
+   let cls;
+   if(r.foreign_5d_idrb>0) cls='pill-buy';
+   else if(r.foreign_5d_idrb<0) cls='pill-sell';
+   else cls='pill-net';
    pill=`<span class="pill ${cls}" title="gross 5d: beli ${buy>=1000?(buy/1000).toFixed(1)+' T':buy.toFixed(0)+' M'} / jual ${sell>=1000?(sell/1000).toFixed(1)+' T':sell.toFixed(0)+' M'}">${dom} ${pct}%</span>`;
  }
  return {raw:r.foreign_5d_idrb,txt:(r.foreign_5d_idrb>0?'+':'−')+s+' IDR',pill:pill};}
