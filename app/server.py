@@ -4,7 +4,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import json, sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.main import load_cache
-from app import score as sc, io_cache, ledger, config as cfg
+from app import score as sc, io_cache, ledger, config as cfg, value
 import pandas as pd, numpy as np
 
 def build_rows():
@@ -27,14 +27,18 @@ def build_rows():
         if f is None or len(f) < 25: continue
         f5 = f['net_foreign_inflow'].tail(5).sum()
         fnotes[s + '.JK'] = round(float(f5)/1e9, 1)   # IDR miliar
+    # Fair value + edge per saham (hanya untuk OK rows yg di frontend)
+    fv = value.fair_value(ohlcv)
     rows = []
     for t, v in last.dropna().sort_values(ascending=False).items():
+        fv_row = fv.get(t)
         rows.append({
             'symbol': t.replace('.JK',''), 'score': round(float(v), 2),
             'momentum': round(float(pm.get(t, np.nan)), 2) if pd.notna(pm.get(t)) else None,
             'fundamental': round(float(pf.get(t, np.nan)), 2) if pf is not None and pd.notna(pf.get(t)) else None,
             'liquid': bool(floor.get(t, False)),
             'foreign_5d_idrb': fnotes.get(t),
+            'fair': fv_row,
         })
     led = ledger.stats('flow_alert') or {'n': 0}
     return {'regime': 'UP' if reg_on else 'DOWN', 'regime_margin_pct': margin, 'asof': str(comp.index[-1].date()),
@@ -88,7 +92,7 @@ details .x b{color:#e6e6e6}.x .q{color:#79c0ff}.x .a{color:#7ee787}
 </div>
 <div id=lookup-box style="display:none;background:#161b22;border:1px solid #30363d;border-radius:8px;padding:12px 16px;margin-bottom:12px;font-size:13px"></div>
 <table><thead><tr>
-<th data-k=symbol style="cursor:pointer">Saham</th><th data-k=score style="cursor:pointer">Skor</th><th data-k=momentum style="cursor:pointer">Momentum</th><th data-k=fundamental style="cursor:pointer">Funda</th><th data-k=foreign style="cursor:pointer">Asing 5d</th><th data-k=status>Status</th><th title="klik ★ untuk watchlist">★</th>
+<th data-k=symbol style="cursor:pointer">Saham</th><th data-k=score style="cursor:pointer">Skor</th><th data-k=momentum style="cursor:pointer">Momentum</th><th data-k=fundamental style="cursor:pointer">Funda</th><th data-k=foreign style="cursor:pointer">Asing 5d</th><th data-k=fair style="cursor:pointer" title="Median close 252 hari ± 8% band. current vs fair_mid: di bawah wajar / wajar / di atas wajar">Wajar</th><th data-k=target style="cursor:pointer" title="Target +20d (backtest top-5 median spread +1.65%/20d) & Stop-loss (52-week low)">Target / Stop</th><th data-k=status>Status</th><th title="klik ★ untuk watchlist">★</th>
 </tr></thead>
 <tbody id=tb></tbody></table>
 <div class=foot id=ledger></div>
@@ -99,6 +103,8 @@ details .x b{color:#e6e6e6}.x .q{color:#79c0ff}.x .a{color:#7ee787}
 <span class=q>Momentum</span> = konsistensi arah harga 20/60/120 hari, disesuaikan volatilitas. <i>Naik tinggi tapi naik dadak → tidak dinilai.</i>
 <br><span class=q>Fundamental</span> = ROE + laba/harga, dengan penalti untuk growth-trap (pertumbuhan revenue tinggi yang sering menipu di IDX).
 <br><span class=q>Asing 5d</span> = uang investor asing masuk (+) atau keluar (−) 5 hari terakhir, dari data transaksi Sectors. <b>Kolom informasi, bukan sinyal</b> — kami mengujinya sebagai sinyal dan hasilnya negatif (detail di README), jadi ditampilkan apa adanya.
+<br><span class=q>Wajar</span> = posisi harga saat ini vs median close 252 hari (±8% band). <span class=g>di bawah wajar</span> artinya harga di bawah band bawah — pasar menilai lebih murah dari setahun ke belakang. <span class=r>di atas wajar</span> sebaliknya. <span class=m>wajar</span> = dalam band. Bukan saran beli/jual, hanya konteks.
+<br><span class=q>Target / Stop</span> = Target = harga +20d pakai backtest combo momentum+fundamental median spread +1.65%. Stop = 52-week low. Keduanya bukan prediksi ARUS, hanya turunan dari backtest & data historis.
 <br><span class=q>Status</span> = <span class=a>OK</span>: likuid &amp; IHSG di atas EMA50 → boleh dipertimbangkan. <span style="color:#f4a6b8">WAIT</span>: IHSG lemah → tunggu. <span style="color:#c9d1d9">SKIP</span>: likuiditas rendah → hindari.
 <br><br>
 <b>Regime</b>: semua saham jadi WAIT saat IHSG di bawah EMA50 — momentum saham jarang menang saat indeks jatuh; itu hasil backtest, bukan opini.
@@ -125,18 +131,31 @@ if(stat==='wait')rows=rows.filter(r=>stOf(r)!=='OK');
 if(onlyF)rows=rows.filter(r=>r.foreign_5d_idrb!=null&&r.foreign_5d_idrb>0);
 if(q)rows=rows.filter(r=>r.symbol.includes(q));
 if(onlyW)rows=rows.filter(r=>WL.has(r.symbol));
-const key={symbol:r=>r.symbol,score:r=>r.score??-1,momentum:r=>r.momentum??-1,fundamental:r=>r.fundamental??-1,foreign:r=>r.foreign_5d_idrb??-Infinity};
+const key={symbol:r=>r.symbol,score:r=>r.score??-1,momentum:r=>r.momentum??-1,fundamental:r=>r.fundamental??-1,foreign:r=>r.foreign_5d_idrb??-Infinity,fair:r=>r.fair?.fair_mid??-1,target:r=>r.fair?.target_20d??-1};
 const dir=sort==='symbol'?1:sortDir;
 rows.sort((a,b)=>{const ka=key[sort](a),kb=key[sort](b);return ka===kb?0:(ka>kb?dir:-dir);});
-const KLBL={symbol:'Saham',score:'Skor',momentum:'Momentum',fundamental:'Funda',foreign:'Asing 5d'};
+const KLBL={symbol:'Saham',score:'Skor',momentum:'Momentum',fundamental:'Funda',foreign:'Asing 5d',fair:'Wajar',target:'Target / Stop'};
 document.getElementById('sortlabel').textContent=KLBL[sort]+(dir===1?' ▲':' ▼');
 document.querySelectorAll('th').forEach(th=>{th.className=th.dataset.k===sort?(dir===1?'sort-asc':'sort-desc'):'';});
 const bar=(v)=>v==null?'<span class="pill m">n/a</span>':`<span class=bar><span class="fill ${v>=0.6?'f-hi':v>=0.4?'f-mid':'f-lo'}" style="width:${Math.round(v*100)}%"></span></span><span class="pct">${Math.round(v*100)}%</span>`;
 window.pbar=bar;
+const fmtPrice=(n)=>n==null?'—':Math.round(n).toLocaleString('id-ID');
+const fmtFair=(r)=>{
+  if(!r.fair) return '—';
+  const f=r.fair;
+  const color=f.pos_band==='di bawah wajar'?'g':(f.pos_band==='di atas wajar'?'r':'m');
+  return `<span class=${color} title="current ${fmtPrice(f.current)} vs median ${fmtPrice(f.fair_mid)} (band ${fmtPrice(f.fair_low)}–${fmtPrice(f.fair_high)})">${f.pos_band}</span><div style="font-size:11px;color:#8b949e">${fmtPrice(f.fair_low)}–${fmtPrice(f.fair_high)}</div>`;
+};
+const fmtTarget=(r)=>{
+  if(!r.fair) return '—';
+  const f=r.fair;
+  const upCol=f.target_20d>=f.current?'g':'m';
+  return `<span class=${upCol} title="Target +20d backtest combo m+f median spread">${fmtPrice(f.target_20d)}</span> <span style="color:#8b949e">/</span> <span class=r title="Stop-loss = 52-week low">${fmtPrice(f.stop_loss)}</span>`;
+};
 document.getElementById('tb').innerHTML=rows.map(r=>{
 const st=stOf(r);const stc=st==='OK'?'g':(st==='WAIT'?'r':'m');
 const f=fmtForeign(r);const fg=f==null?'—':(f.raw>0?`<span class=g>${f.txt}</span>`:`<span class=r>${f.txt}</span>`);
-return `<tr><td><b>${r.symbol}</b></td><td>${bar(r.score)}</td><td>${bar(r.momentum)}</td><td>${bar(r.fundamental)}</td><td>${fg}</td><td><span class="pill ${stc}">${st}</span></td><td><span class="star ${WL.has(r.symbol)?'on':''}" data-s=${r.symbol}>${WL.has(r.symbol)?'★':'☆'}</span></td></tr>`}).join('');
+return `<tr><td><b>${r.symbol}</b></td><td>${bar(r.score)}</td><td>${bar(r.momentum)}</td><td>${bar(r.fundamental)}</td><td>${fg}</td><td>${fmtFair(r)}</td><td>${fmtTarget(r)}</td><td><span class="pill ${stc}">${st}</span></td><td><span class="star ${WL.has(r.symbol)?'on':''}" data-s=${r.symbol}>${WL.has(r.symbol)?'★':'☆'}</span></td></tr>`}).join('');
 document.getElementById('ledger').innerHTML='Ledger sinyal flow: '+(d.ledger.n>0?`n=${d.ledger.n}, hit ${(d.ledger.hit*100).toFixed(0)}%, median ${(d.ledger.med*100).toFixed(1)}%`:'n=0 — rapor mulai terisi saat cron live aktif');
 }
 ['stat','only-foreign','watch'].forEach(id=>document.getElementById(id).addEventListener('change',render));
