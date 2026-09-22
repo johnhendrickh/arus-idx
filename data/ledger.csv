@@ -1,1 +1,43 @@
 date,symbol,signal_type,score,price_ref,note,outcome_fwd20
+2026-08-12,BBCA,flow_alert,0.6,6403.0,"rejection dari support, recovery",-0.0101
+2026-08-12,CPIN,flow_alert,0.53,4740.0,"asing inflow kuat 5d, momentum naik",-0.0649
+2026-08-14,INTP,flow_alert,0.51,8090.0,broker X net buy 3 hari berturut,-0.0345
+2026-08-17,UNVR,flow_alert,0.78,1566.0,"net buy asing 200M, skor tinggi",-0.0456
+2026-08-18,HMSP,flow_alert,0.55,1288.0,"top buyer broker akumulasi, f.hold fund",-0.0141
+2026-08-18,UNVR,flow_alert,0.63,1658.0,"reversal setup, RSI rebound",0.0101
+2026-08-19,CPIN,flow_alert,0.69,5163.0,"distribusi selesai, bargain hunting",-0.0416
+2026-08-19,ADRO,flow_alert,0.72,2645.0,"koreksi sehat, akumulasi broker",0.03
+2026-08-24,EXCL,flow_alert,0.84,2325.0,flow + momentum alignment,0.0211
+2026-08-24,INDF,flow_alert,0.72,6946.0,"breakout resisten, volume spike",-0.0341
+2026-08-25,TPIA,flow_alert,0.59,6205.0,"net buy asing 200M, skor tinggi",-0.0378
+2026-08-26,MEDC,flow_alert,0.56,1422.0,"distribusi selesai, bargain hunting",-0.049
+2026-08-27,MEDC,flow_alert,0.61,1512.0,"breakout resisten, volume spike",0.0648
+2026-08-27,TPIA,flow_alert,0.64,5397.0,"koreksi sehat, akumulasi broker",0.0206
+2026-08-28,HMSP,flow_alert,0.73,1180.0,"reversal setup, RSI rebound",0.0331
+2026-08-28,BBNI,flow_alert,0.55,3741.0,"rejection dari support, recovery",-0.0277
+2026-08-31,SMGR,flow_alert,0.65,3547.0,"net buy asing 200M, skor tinggi",-0.0941
+2026-09-01,BMRI,flow_alert,0.76,5712.0,"net buy asing 200M, skor tinggi",0.1
+2026-09-02,SIDO,flow_alert,0.65,539.0,"fund ROE solid, valuasi murah",
+2026-09-02,TPIA,flow_alert,0.71,5770.0,"reversal setup, RSI rebound",
+2026-09-03,ERAA,flow_alert,0.75,463.0,"rejection dari support, recovery",
+2026-09-03,BBCA,flow_alert,0.76,6988.0,"breakout resisten, volume spike",
+2026-09-03,TPIA,flow_alert,0.54,5739.0,flow + momentum alignment,
+2026-09-07,CPIN,flow_alert,0.84,5001.0,"rejection dari support, recovery",
+2026-09-07,UNVR,flow_alert,0.82,1801.0,"reversal setup, RSI rebound",
+2026-09-08,AKRA,flow_alert,0.57,1421.0,"net buy asing 200M, skor tinggi",
+2026-09-08,INTP,flow_alert,0.69,8879.0,"rejection dari support, recovery",
+2026-09-09,INTP,flow_alert,0.51,9084.0,"reversal setup, RSI rebound",
+2026-09-09,HMSP,flow_alert,0.58,1150.0,"koreksi sehat, akumulasi broker",
+2026-09-09,PGEO,flow_alert,0.83,980.0,flow + momentum alignment,
+2026-09-10,EXCL,flow_alert,0.77,2069.0,flow + momentum alignment,
+2026-09-10,INKP,flow_alert,0.83,8045.0,"rejection dari support, recovery",
+2026-09-11,ITMG,flow_alert,0.83,25501.0,broker X net buy 3 hari berturut,
+2026-09-11,BBNI,flow_alert,0.75,3542.0,"distribusi selesai, bargain hunting",
+2026-09-14,ADRO,flow_alert,0.68,2348.0,broker X net buy 3 hari berturut,
+2026-09-14,MAPI,flow_alert,0.52,1293.0,"rejection dari support, recovery",
+2026-09-15,MEDC,flow_alert,0.5,1498.0,"asing inflow kuat 5d, momentum naik",
+2026-09-16,MAPI,flow_alert,0.51,1362.0,"rejection dari support, recovery",
+2026-09-17,TPIA,flow_alert,0.67,5836.0,"koreksi sehat, akumulasi broker",
+2026-09-18,MEDC,flow_alert,0.77,1521.0,broker X net buy 3 hari berturut,
+2026-09-22,ANTM,flow_alert,0.64,1587.0,"asing inflow kuat 5d, momentum naik",
+2026-09-22,ITMG,flow_alert,0.74,26398.0,"top buyer broker akumulasi, f.hold fund",

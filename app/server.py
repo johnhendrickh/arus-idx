@@ -370,9 +370,9 @@ th:hover{color:#e6e6e6}th.sort-asc::after{content:" ▲"}th.sort-desc::after{con
 Cron harian: <code>python -m app.main</code> (16.15 WIB) catat sinyal → <code>python scripts/ledger_resolve.py</code> (17.15 WIB) isi outcome 20 hari kemudian. File: <code>data/ledger.csv</code>. Detail implementasi: <a href="https://github.com/johnhendrickh/arus-idx/blob/master/app/ledger.py" style="color:#58a6ff">app/ledger.py</a>.
 </div>
 <script>
-let ROWS=null;let SORTK='date',SORTD=-1;
+let ROWS=null;let STATS=null;let SORTK='date',SORTD=-1;
 fetch('/api/ledger').then(r=>r.json()).then(d=>{
-  ROWS=d.rows||[];render();
+  ROWS=d.rows||[];STATS=d.stats||{};render();
 });
 function fmtDate(s){return s;}
 function fmtPct(v){if(v==null)return '—';const cls=v>0?'g':(v<0?'r':'m');const pct=(v*100).toFixed(2);return `<span class="pill ${cls}">${v>0?'+':''}${pct}%</span>`;}
@@ -385,11 +385,9 @@ function render(){
     return;
   }
   const total=ROWS.length;
-  const done=ROWS.filter(r=>r.outcome_fwd20!=null);
-  const nd=done.length;
-  const wins=done.filter(r=>r.outcome_fwd20>0).length;
-  const hit=nd>0?Math.round(wins/nd*100):null;
-  const med=nd>0?(done.map(r=>r.outcome_fwd20).sort((a,b)=>a-b)[Math.floor(nd/2)]*100).toFixed(2)+'%':'—';
+  const nd=STATS.done!=null?STATS.done:done.length;
+  const hit=STATS.hit!=null?Math.round(STATS.hit*100):null;
+  const med=STATS.med!=null?(STATS.med*100).toFixed(2)+'%':'—';
   sum.innerHTML=`
     <div class="stat"><div class="lbl">Total sinyal</div><div class="val">${total}</div><div class="sub">sejak cron live aktif</div></div>
     <div class="stat"><div class="lbl">Resolved (≥20d)</div><div class="val">${nd}</div><div class="sub">dari ${total}</div></div>
@@ -452,7 +450,7 @@ def ledger_page_data():
             'note': str(r.get('note', ''))[:80],
         })
     rows.sort(key=lambda x: x['date'], reverse=True)
-    return {'rows': rows}
+    return {'rows': rows, 'stats': ledger.stats() or {'n': 0, 'done': 0, 'hit': None, 'med': None}}
 
 class H(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
