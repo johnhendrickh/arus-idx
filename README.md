@@ -29,10 +29,18 @@ docker compose up -d --build               # atau: python -m venv .venv && .venv
 
 ## Video demo
 
-- **Teaser (62 detik, public)** — [YouTube URL akan dipasang setelah upload]
-- **Judging (116 detik, unlisted)** — [YouTube URL akan dipasang setelah upload]
+- **Teaser (66 detik, public)** — `~/arus-video/ARUS_teaser_anim_v9.mp4` (1920x1080, h264+aac, ~4.9 MB, NO subtitle, v9 update Sel 22 Sep)
+- **Judging (116 detik, unlisted)** — `~/arus-video/ARUS_judging_v2.mp4` (1920x1080, h264+aac, ~11 MB, NO subtitle, v2 update Sel 22 Sep)
 
-Lihat `~/arus-video/ARUS_teaser_anim_v8.mp4` (62s) dan `~/arus-video/ARUS_judging_v1.mp4` (116s) untuk source file.
+Source files: `~/arus-video/teaser.py` + `~/arus-video/judging.py` (Manim render), `~/arus-video/vo/` (VO Bahasa Indonesia `id-ID-GadisNeural` 1.30x). Storyboard di `~/arus-video/STORYBOARD_v9.md` dan `~/arus-video/STORYBOARD_JUDGING_v2.md`.
+
+**v9 / v2 update dari v8 / v1.6 (Sel 22 Sep 2026):**
+- Teaser S3.5: pakai dashboard v3 dengan 9 kolom (Saham, Skor, Momentum, Funda, Asing 5d, Acuan, Target/Stop, Status, ★). Sub-caption baru: "21 saham IDX · skor 0-100 · kolom Acuan (murah/netral/mahal) · pill BELI/JUAL solid di kolom Asing 5d"
+- Teaser VO S4: replace dengan VO kasual yang jelaskan Acuan (murah/netral/mahal) + Asing 5d (hijau = lagi beli, merah = lagi jual)
+- Teaser S2 bobot: 55% momentum / 45% fundamental (was 50/30). FLOW DANA label jadi "info" bukan "20%" (sesuai posisi flow sebagai info, bukan sinyal)
+- Judging J5/J6: pakai dashboard v3 + caption Acuan + BELI/JUAL pill. J6 arrow + sub-caption "HIJAU = lagi beli, MERAH = lagi jual"
+- Judging J9: positive framing — "fakta, bukan masalah" (was "itu fakta keterbatasan")
+- Judging J9b: pakai full /ledger page (4 summary cards + 42-row table) — was old small ledger.png. Sub-caption: "42 sample sinyal · 18 resolved · hit 39% · median -2.09% (live cron)"
 
 ---
 
