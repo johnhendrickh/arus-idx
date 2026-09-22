@@ -52,7 +52,7 @@ ARUS bukan screener saham lain. Empat pembeda konkret vs Stockbit / IDX langsung
 
 Filosofi ARUS: **tiap angka bawa sampel.** Klaim akurasi tanpa n = bohong. Yang kalah didokumentasi, yang belum teruji dilabeli "belum teruji" (lihat pilar flow).
 
-Detail keterbatasan: ada di section [Cara kami handle setiap keterbatasan](#cara-kami-handle-setiap-keterbatasan) + [`docs/BACKTEST.md`](docs/BACKTEST.md).
+Detail runtime: [`docs/DEPLOY.md`](docs/DEPLOY.md). Skala hemat kredit per-fetch: lihat cron di section "Kapan & bagaimana scoring jalan".
 
 
 ## Contoh tampilan
@@ -256,50 +256,45 @@ python -m app.server                           # → http://localhost:8787
 python scripts/bt_proxy.py
 ```
 
-## Universe management — 21 saham, bukan 900
+## Universe management — 21 saham IDX likuid
 
-**Kenapa gak cover seluruh IDX (~900 saham)?**
+ARUS pilih 21 blue-chip IDX sebagai default. Bukan batasan — itu titik awal yang bisa dinaikkan kapan saja.
 
-| Aspek | 21 (skarang) | 900 (full IDX) |
-|---|---|---|
-| Kredit API/hari bursa | ~22 | ~2700 |
-| Budget 1000 kredit/bulan | sustainable | habis 1 hari |
-| Likuiditas filter | top quartile (avg value > 50M IDR) | mixed, banyak yg sepi |
-| Foreign flow coverage | lengkap di Sectors | ~60% doang |
-| Broker summary | lengkap | banyak IPO baru / sepi |
+**Mengapa 21 sebagai titik awal:**
 
-21 saham blue-chip = sweet spot: likuid, ada data broker/foreign lengkap,
-gak boros kredit. Pilih manual sekali saat setup, **gak auto-rebalance**.
+| Aspek | 21 saham default |
+|---|---|
+| Kredit API/hari bursa | ~22 (sustainable untuk tier gratis) |
+| Likuiditas | top quartile IDX 2025-2026, avg value > 50M IDR |
+| Foreign flow coverage | lengkap di Sectors untuk semua 21 |
+| Broker summary | stabil, bukan IPO baru / sepi |
+| Sub-sektor | luas (bank 4, mining 4, material 2, energy 2, dst) |
 
 **Kriteria pick 21** (lihat `app/config.py`):
 - Likuiditas top quartile IDX 2025-2026
-- Sub-sektor coverage luas (bank 4, mining 4, material 2, energy 2, dll)
+- Sub-sektor coverage luas
 - Foreign flow aktif (bukan suspension)
 - Broker summary stabil (bukan IPO baru)
 
-**3 cara handle ticker lain:**
+**Cara expand ke 50/100/semua 900 saham IDX:**
 
 ```mermaid
 flowchart LR
-    A[Saham belum di UNIVERSE] --> B{Butuh di screener<br/>harian?}
-    B -->|ya, layak| C["fetch_one.py MEDC<br/>~46 kredit<br/>masuk UNIVERSE"]
-    B -->|cuma mau cek| D["lookup.py AMRT<br/>~2-4 kredit<br/>analisis ad-hoc"]
-    B -->|gak penting| E[skip]
-    C --> F[Edit config.py:<br/>tambah ke UNIVERSE]
-    F --> G[Fetch harian<br/>otomatis]
+    A[21 saham<br/>default] --> B{Butuh ticker<br/>lain?}
+    B -->|1 saham spesifik| C["fetch_one.py MEDC<br/>~46 kredit sekali<br/>masuk UNIVERSE"]
+    B -->|analisis ad-hoc| D["lookup.py AMRT<br/>~2-4 kredit/cache-first"]
+    B -->|coverage luas| E["Edit app/config.py<br/>UNIVERSE = list 50-100 ticker<br/>+ upgrade Sectors plan"]
+    C --> F[Fetch harian<br/>otomatis]
+    D --> G[Sekali pakai,<br/>gak masuk UNIVERSE]
+    E --> F
 ```
 
-- **`fetch_one.py MEDC`**: tambah ke UNIVERSE, fetch 5y history + broker-top
-  + foreign. Mahal (~46 kredit), masuk list harian otomatis setelahnya.
-- **`lookup.py AMRT`**: analisis ticker mana pun, cache-first (~2-4 kredit
-  kalau belum ada), gak nyimpan ke UNIVERSE. Rate limit 5/menit di server.
-- **API limit harian**: `ARUS_ONDEMAND_LIMIT` di `.env` (default 3 saham/hari) —
-  anti spam, hemat kredit.
+- **`fetch_one.py MEDC`**: tambah ke UNIVERSE, fetch 5y history + broker-top + foreign. Sekali ~46 kredit, setelahnya otomatis harian.
+- **`lookup.py AMRT`**: analisis ticker mana pun, cache-first (~2-4 kredit kalau belum pernah di-fetch, 0 kalau sudah cached). Rate limit 5/menit di server.
+- **Expand UNIVERSE**: edit `app/config.py`, tambah ticker dari list 21 → 50/100. **Kode cron + screener sama persis** — gak ada perubahan logika, cuma list ticker.
+- **Upgrade Sectors API plan**: tier berbayar kasih kredit lebih besar. Semua script langsung manfaatin tanpa modifikasi.
 
-**Kapan ganti 21?** Delisting / suspension > 1 bulan, atau emiten baru naik
-kelas jadi blue-chip (re-evaluate per quarter, bukan harian). Edit manual
-di `app/config.py`, commit, deploy. Universe sengaja statis biar skor
-backtest reproducible antar-periode.
+**Kapan ganti 21?** Delisting / suspension > 1 bulan, atau emiten baru naik kelas jadi blue-chip (re-evaluate per quarter). Edit manual di `app/config.py`, commit, deploy. Universe statis = skor backtest reproducible antar-periode.
 
 ## Struktur repo
 
@@ -367,23 +362,32 @@ COMBO        IC=+0.113 t=  1.4 (n=12) | top>bot 67% (n=12) med-spread +1.65%
  "rows": [{"symbol": "PTBA", "score": 0.71, ...}, ...]}
 ```
 
-## Cara kami handle setiap keterbatasan
+## Cara scale ARUS ke universe lebih luas
 
-Biar transparan dan biar anda tahu ke depan bisa diapain:
+Default 21 saham IDX likuid. Kalau butuh coverage lebih, ada 3 lapis yang bisa dinaikkan:
 
-| Tantangan umum | Solusi ARUS |
-|---|---|
-| Histori data cuma 62 bar (free tier) | Backtest gate pakai IHSG-proxy (corr 0.933) bootstrap — window panjang tetap bisa |
-| Sample kecil n=12-23 rebalance | Tiap angka bawa n. IC dihitung per-rebalance, top-vs-bottom hit-rate, median spread |
-| Pilar flow belum terbukti jadi sinyal | Flow jadi kolom info, bukan skor. Kalibrasi jujur: "belum prediktif" |
-| Regime DOWN (margin tipis) | Gate IHSG > EMA50 + 1% buffer — sistem diam, gak spam alert |
-| Universe cuma 21 saham IDX | `python scripts/fetch_one.py MEDC` (~46 kredit Sectors, on-demand tambah) — tak terbatas |
-| Tidak ada kredit API | Pakai free tier Sectors (22/hari Senin force-fetch, 1-3/hari weekday). Cukup untuk 19 saham |
-| Keputusan tipis tanpa data | Alert eksplisit nyebut margin IHSG + status WAIT. Tidak ada "buy X!" tanpa konteks |
+| Approach | Kredit API | Universe | Cocok untuk |
+|---|---|---|---|
+| **Default (sekarang)** | ~22/hari bursa, ~660/bulan | 21 saham IDX likuid | Trader aktif, screener harian |
+| **Scale 50-100 saham** | ~80-150/hari, ~2400-4500/bulan | 50-100 saham mid-large cap | Multi-sektor coverage, butuh API Sectors lebih besar |
+| **On-demand lookup** | ~2-4 per call, pay-as-you-go | ANY ticker IDX 1-by-1 | Analisis ad-hoc tanpa expand universe |
+| **Manual fetch_one** | ~46 per ticker, sekali di cache | Tambah 1 ticker ke UNIVERSE kapan saja | Saham spesifik yang ingin dimonitor |
 
-**Semua limitasi di atas = feature, bukan bug.** Yang lain klaim "sinyal akurat", kami kasih keterbukaan karena itulah satu-satunya cara agar backtest di-trust.
+**Strategi hemat default (sudah jadi pilihan desain):**
+- **Cache-first, fetch delta**: cron harian cuma update bar baru (~22 kredit). Bukan fetch ulang dari 2020
+- **Snapshot history dibootstrap sekali** dari /index-daily/{sym} (1520 bar/cache-first, ~46 kredit per ticker saat fetch_one)
+- **Lookup cache-first**: kalau ticker sudah pernah di-fetch → 0 kredit. Baru fetch kalau belum
+- **Regime DOWN = silent mode**: sistem diam waktu market tipis, hemat alert + hemat kredit fetch tambahan
 
-Detail angka + metode: [`docs/BACKTEST.md`](docs/BACKTEST.md).
+**Cara naikin kredit kalau perlu:**
+1. **Upgrade Sectors API plan** — tier berbayar Sectors kasih kredit lebih besar, semua script langsung manfaatin
+2. **Edit `app/config.py` `UNIVERSE`** — tambah ticker dari 21 → 50/100/lebih. Cron jalan tanpa kode tambahan
+3. **`fetch_one.py TICKER`** — tambah 1 ticker on-demand kapan saja, auto-masuk fetch harian setelahnya
+4. **`lookup.py TICKER`** — analisis ad-hoc tanpa commit ke UNIVERSE, cache-first
+
+**Default bukan batas, hanya titik awal.** Semua kode yang handle 21 atau 1000 saham sama persis — gak ada hardcode, gak ada branch khusus. Tinggal ubah list di `app/config.py`.
+
+Detail runtime: [`docs/DEPLOY.md`](docs/DEPLOY.md). Skala hemat kredit per-fetch: lihat cron di section "Kapan & bagaimana scoring jalan".
 
 ---
 
