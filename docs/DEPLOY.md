@@ -46,7 +46,7 @@ Tambahkan ke crontab user (`crontab -e`):
 ```cron
 TZ=Asia/Jakarta
 # Setiap hari bursa 16:15 WIB — fetch + scan + alert
-15 16 * * 1-5 cd ~/arus && .venv/bin/python scripts/fetch_sectors_prices.py 30 && .venv/bin/python scripts/fetch_sectors_daily.py && TZ=Asia/Jakarta .venv/bin/python -m app.main >> ~/arus/data/cron.log 2>&1
+15 16 * * 1-5 cd ~/arus && .venv/bin/python scripts/fetch_sectors_prices.py 30 && .venv/bin/python scripts/fetch_sectors_daily.py && .venv/bin/python scripts/fetch_corp_actions.py && TZ=Asia/Jakarta .venv/bin/python -m app.main >> ~/arus/data/cron.log 2>&1
 ```
 
 Guard weekend + bursa libur di-handle script `app/main.py`.

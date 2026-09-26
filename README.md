@@ -83,7 +83,7 @@ Yang terlihat di screenshot desktop:
   WAIT (likuid) atau SKIP (illiquid). Tidak ada sinyal palsu di market
   tipis.
 - **21 rows** tersortir by Skor (PTBA 71% di atas, BUVA 21% di bawah).
-- **9 kolom**: Saham | Skor | Momentum | Funda | **Asing 5d** (pill BELI/JUAL **solid green/red** — visible di glance) | **Acuan** (label "murah/netral/mahal" + pita range 252d ±8%) | **Target/Stop** (backtest top-5 spread 20d × stop 52-week low) | Status (WAIT/SKIP) | ★
+- **10 kolom**: Saham | Skor | Momentum | Funda | **Asing 5d** (pill BELI/JUAL **solid green/red** — visible di glance) | **Acuan** (label "murah/netral/mahal" + pita range 252d ±8%) | **Target/Stop** (backtest top-5 spread 20d × stop 52-week low) | **Aksi** (right issue / dividen / split dari corporate actions Sectors; saham dengan right issue aktif otomatis di-WAIT — harga disesuaikan, sinyal menyesatkan) | Status (WAIT/SKIP) | ★
 - **Sort klik header** kolom mana saja (▲▼ toggle), sesuai tipikal
   trader.
 - **Search bar "analisis"** untuk lookup ticker di luar universe (~2-4
@@ -385,11 +385,15 @@ app/
   alert.py       — Telegram (informasi saja, TIDAK ada aksi trading)
   server.py      — web screener stdlib (http.server, tanpa framework)
 scripts/
-  fetch_sectors_prices.py — harga harian + IHSG dari Sectors (runtime utama)
-  fetch_one.py            — tambah 1 ticker on-demand ke universe (~46 kredit)
-  lookup.py               — analisis ad-hoc ticker apa pun (~2-4 kredit)
-  bt_proxy.py             — backtest gate IHSG-proxy (window panjang)
-  ledger_resolve.py       — cron harian: isi outcome 20d untuk sinyal yang cukup umur
+  fetch_sectors.py         — Sectors API client (impor: fetch_one, fetch_sectors_prices, lookup, ledger_resolve)
+  fetch_sectors_prices.py  — harga harian + IHSG dari Sectors (runtime utama)
+  fetch_sectors_daily.py   — refresh ringan tiap hari (cron harian)
+  fetch_corp_actions.py    — aksi korporat IDX (right issue/dividen/split) — 1 kredit, cron harian
+  fetch_one.py             — tambah 1 ticker on-demand ke universe (~46 kredit)
+  lookup.py                — analisis ad-hoc ticker apa pun (~2-4 kredit)
+  bt_proxy.py              — backtest gate IHSG-proxy (window panjang)
+  bt_flow_v2.py            — test kandidat logic flow baru vs baseline (lihat BACKTEST.md)
+  ledger_resolve.py        — cron harian: isi outcome 20d untuk sinyal yang cukup umur
 docs/
   BACKTEST.md     — SEMUA bukti: angka menang, angka kalah, sampel n, metode
   DEPLOY.md       — cara deploy: native Python atau Docker

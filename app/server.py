@@ -6,6 +6,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.main import load_cache
 from app import score as sc, io_cache, ledger, config as cfg, value
 import pandas as pd, numpy as np
+import datetime as dt
 
 def build_rows():
     ohlcv, bm, fm, idx = load_cache()
@@ -48,6 +49,32 @@ def build_rows():
             'fair': fv_row,
         })
     led = ledger.stats('flow_alert') or {'n': 0}
+    # aksi korporat dari cache (fetch_corp_actions.py, 1 kredit/hari)
+    ca = {}
+    try:
+        with open(io_cache.path('corp_actions.json')) as f:
+            d = json.load(f)
+        today = dt.date.today()
+        for kind, key in (('right_issue', 'RI'), ('upcoming_dividend', 'DIV'), ('stock_split', 'SPL')):
+            for x in d.get(kind, []):
+                sym = (x.get('symbol') or '').replace('.JK', '')
+                dt_ = x.get('ex_date') or x.get('date')
+                if not sym or not dt_:
+                    continue
+                try:
+                    dd = dt.date.fromisoformat(dt_)
+                except ValueError:
+                    continue
+                if (dd - today).days >= -7:  # tampil dari 7 hari sebelum sampai selesai window
+                    prev = ca.get(sym)
+                    if prev is None or dd.isoformat() < prev['date']:
+                        ca[sym] = {'type': key, 'date': dd.isoformat(),
+                                   'detail': f"{x.get('price','')} {x.get('old_ratio','')}:{x.get('new_ratio','')}" if key == 'RI'
+                                   else (x.get('ratio') or (str(x.get('dividend_amount') or '') + ' IDR'))}
+    except FileNotFoundError:
+        pass
+    for row in rows:
+        row['corp_action'] = ca.get(row['symbol'])
     return {'regime': 'UP' if reg_on else 'DOWN', 'regime_margin_pct': margin, 'asof': str(comp.index[-1].date()),
             'rows': rows, 'ledger': led}
 
@@ -153,7 +180,7 @@ details .x b{color:#e6e6e6}.x .q{color:#79c0ff}.x .a{color:#7ee787}
 </div>
 <div id=lookup-box style="display:none;background:#161b22;border:1px solid #30363d;border-radius:8px;padding:12px 16px;margin-bottom:12px;font-size:13px"></div>
 <div class="tbl-wrap"><table><thead><tr>
-<th data-k=symbol style="cursor:pointer">Saham</th><th data-k=score style="cursor:pointer">Skor</th><th data-k=momentum style="cursor:pointer">Momentum</th><th data-k=fundamental style="cursor:pointer">Funda</th><th data-k=foreign style="cursor:pointer">Asing 5d</th><th data-k=fair style="cursor:pointer" title="Posisi harga saat ini vs median close 252 hari (±8% pita). murah = di bawah pita bawah, netral = dalam pita, mahal = di atas pita atas. Bukan saran beli/jual, hanya konteks.">Acuan</th><th data-k=target style="cursor:pointer" title="Target +20d (backtest top-5 median spread +1.65%/20d) & Stop-loss (52-week low)">Target / Stop</th><th data-k=status>Status</th><th title="klik ★ untuk watchlist">★</th>
+<th data-k=symbol style="cursor:pointer">Saham</th><th data-k=score style="cursor:pointer">Skor</th><th data-k=momentum style="cursor:pointer">Momentum</th><th data-k=fundamental style="cursor:pointer">Funda</th><th data-k=foreign style="cursor:pointer">Asing 5d</th><th data-k=fair style="cursor:pointer" title="Posisi harga saat ini vs median close 252 hari (±8% pita). murah = di bawah pita bawah, netral = dalam pita, mahal = di atas pita atas. Bukan saran beli/jual, hanya konteks.">Acuan</th><th data-k=target style="cursor:pointer" title="Target +20d (backtest top-5 median spread +1.65%/20d) & Stop-loss (52-week low)">Target / Stop</th><th data-k=corp style="cursor:pointer" title="Aksi korporat ≤2 bulan ke depan (right issue, dividen, stock split) dari Sectors API. Harga saham yang sedang right issue akan disesuaikan — target/stop dan momentum bisa menyesatkan. Kolom informasi.">Aksi</th><th data-k=status>Status</th><th title="klik ★ untuk watchlist">★</th>
 </tr></thead>
 <tbody id=tb></tbody></table></div>
 <div id=ledger-banner class="ledger-banner"></div>
@@ -200,17 +227,17 @@ const stat=document.getElementById('stat').value;
 const onlyF=document.getElementById('only-foreign').checked;
 const q=document.getElementById('q').value.trim().toUpperCase();
 const onlyW=document.getElementById('watch').checked;
-const stOf=r=>!r.liquid?'SKIP':(d.regime==='DOWN'?'WAIT':'OK');
+const stOf=r=>!r.liquid?'SKIP':(r.corp_action&&r.corp_action.type==='RI'?'WAIT':(d.regime==='DOWN'?'WAIT':'OK'));
 let rows=[...d.rows];
 if(stat==='ok')rows=rows.filter(r=>stOf(r)==='OK');
 if(stat==='wait')rows=rows.filter(r=>stOf(r)!=='OK');
 if(onlyF)rows=rows.filter(r=>r.foreign_5d_idrb!=null&&r.foreign_5d_idrb>0);
 if(q)rows=rows.filter(r=>r.symbol.includes(q));
 if(onlyW)rows=rows.filter(r=>WL.has(r.symbol));
-const key={symbol:r=>r.symbol,score:r=>r.score??-1,momentum:r=>r.momentum??-1,fundamental:r=>r.fundamental??-1,foreign:r=>r.foreign_5d_idrb??-Infinity,fair:r=>r.fair?.fair_mid??-1,target:r=>r.fair?.target_20d??-1};
+const key={symbol:r=>r.symbol,score:r=>r.score??-1,momentum:r=>r.momentum??-1,fundamental:r=>r.fundamental??-1,foreign:r=>r.foreign_5d_idrb??-Infinity,fair:r=>r.fair?.fair_mid??-1,target:r=>r.fair?.target_20d??-1,corp:r=>r.corp_action?1:0};
 const dir=sort==='symbol'?1:sortDir;
 rows.sort((a,b)=>{const ka=key[sort](a),kb=key[sort](b);return ka===kb?0:(ka>kb?dir:-dir);});
-const KLBL={symbol:'Saham',score:'Skor',momentum:'Momentum',fundamental:'Funda',foreign:'Asing 5d',fair:'Acuan',target:'Target / Stop'};
+const KLBL={symbol:'Saham',score:'Skor',momentum:'Momentum',fundamental:'Funda',foreign:'Asing 5d',fair:'Acuan',target:'Target / Stop',corp:'Aksi'};
 document.getElementById('sortlabel').textContent=KLBL[sort]+(dir===1?' ▲':' ▼');
 document.querySelectorAll('th').forEach(th=>{th.className=th.dataset.k===sort?(dir===1?'sort-asc':'sort-desc'):'';});
 const bar=(v)=>v==null?'<span class="pill m">n/a</span>':`<span class=bar><span class="fill ${v>=0.6?'f-hi':v>=0.4?'f-mid':'f-lo'}" style="width:${Math.round(v*100)}%"></span></span><span class="pct">${Math.round(v*100)}%</span>`;
@@ -229,10 +256,16 @@ const fmtTarget=(r)=>{
   const upCol=f.target_20d>=f.current?'g':'m';
   return `<span class=${upCol} title="Target +20d backtest combo m+f median spread">${fmtPrice(f.target_20d)}</span> <span style="color:#8b949e">/</span> <span class=r title="Stop-loss = 52-week low">${fmtPrice(f.stop_loss)}</span>`;
 };
+const fmtCorp=(r)=>{
+  const c=r.corp_action; if(!c) return '—';
+  const cls=c.type==='RI'?'r':(c.type==='SPL'?'m':'g');
+  const nm=c.type==='RI'?'right issue':(c.type==='SPL'?'split':'dividen');
+  return `<span class="pill ${cls}" title="${nm} ${c.date} — ${c.detail}">${c.type} ${c.date.slice(5)}</span>`;
+};
 document.getElementById('tb').innerHTML=rows.map(r=>{
 const st=stOf(r);const stc=st==='OK'?'g':(st==='WAIT'?'r':'m');
 const f=fmtForeign(r);const fg=f==null?'—':(f.raw>0?`<span class=g>${f.txt}</span>`:`<span class=r>${f.txt}</span>`);
-return `<tr><td><b>${r.symbol}</b></td><td>${bar(r.score)}</td><td>${bar(r.momentum)}</td><td>${bar(r.fundamental)}</td><td>${fg}${(f&&f.pill)?`<div style="margin-top:4px">${f.pill}</div>`:''}</td><td>${fmtFair(r)}</td><td>${fmtTarget(r)}</td><td><span class="pill ${stc}">${st}</span></td><td><span class="star ${WL.has(r.symbol)?'on':''}" data-s=${r.symbol}>${WL.has(r.symbol)?'★':'☆'}</span></td></tr>`}).join('');
+return `<tr><td><b>${r.symbol}</b></td><td>${bar(r.score)}</td><td>${bar(r.momentum)}</td><td>${bar(r.fundamental)}</td><td>${fg}${(f&&f.pill)?`<div style="margin-top:4px">${f.pill}</div>`:''}</td><td>${fmtFair(r)}</td><td>${fmtTarget(r)}</td><td>${fmtCorp(r)}</td><td><span class="pill ${stc}">${st}</span></td><td><span class="star ${WL.has(r.symbol)?'on':''}" data-s=${r.symbol}>${WL.has(r.symbol)?'★':'☆'}</span></td></tr>`}).join('');
 // Mobile card view — same data, stacked layout
 document.getElementById('cb').innerHTML=rows.map(r=>{
   const st=stOf(r);const stc=st==='OK'?'g':(st==='WAIT'?'r':'m');
@@ -247,6 +280,7 @@ document.getElementById('cb').innerHTML=rows.map(r=>{
 <div class="card-row"><span class=card-lbl>Acuan</span>${acuanRange}</div>
 <div class="card-row"><span class=card-lbl>Acuan (status)</span><span class=card-val>${acuanBadge}</span></div>
 <div class="card-row"><span class=card-lbl>Target / Stop</span>${target}</div>
+<div class="card-row"><span class=card-lbl>Aksi Korporat</span><span class=card-val>${fmtCorp(r)==='—'?'—':fmtCorp(r)}</span></div>
 <div class="card-row"><span class=card-lbl>Momentum</span><span class=card-val>${bar(r.momentum)}</span></div>
 <div class="card-row"><span class=card-lbl>Fundamental</span><span class=card-val>${bar(r.fundamental)}</span></div>
 </div>`}).join('');
