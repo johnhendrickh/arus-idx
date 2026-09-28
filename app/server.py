@@ -78,6 +78,59 @@ def build_rows():
     return {'regime': 'UP' if reg_on else 'DOWN', 'regime_margin_pct': margin, 'asof': str(comp.index[-1].date()),
             'rows': rows, 'ledger': led}
 
+# i18n string table — served to client as JSON via /api/i18n.
+# JS swaps text via data-i18n attributes. Default 'id'.
+I18N = {
+    'id': {
+        'lang_toggle': 'EN', 'lang_toggle_url': 'en',
+        'opt_all': 'Semua', 'opt_ok': 'OK', 'opt_wait': 'WAIT/SKIP',
+        'foreign_chk': 'Asing +5d', 'search_ph': 'cari (BBCA)',
+        'analyze_btn': 'analisis', 'watch_chk': '★',
+        'sort_label': 'Urut:', 'status_label': 'Status:',
+        'col_symbol': 'Saham', 'col_score': 'Skor', 'col_momentum': 'Momentum',
+        'col_funda': 'Funda', 'col_foreign': 'Asing 5d', 'col_fair': 'Acuan',
+        'col_target': 'Target / Stop', 'col_corp': 'Aksi',
+        'col_status': 'Status', 'col_star': '★',
+        'th_title_fair': 'Posisi harga saat ini vs median close 252 hari (±8% pita). murah = di bawah pita bawah, netral = dalam pita, mahal = di atas pita atas. Bukan saran beli/jual, hanya konteks.',
+        'th_title_target': 'Target +20d (backtest top-5 median spread +1.65%/20d) & Stop-loss (52-week low)',
+        'th_title_corp': 'Aksi korporat ≤2 bulan ke depan (right issue, dividen, stock split) dari Sectors API. Harga saham yang sedang right issue akan disesuaikan — target/stop dan momentum bisa menyesatkan. Kolom informasi.',
+        'card_lbl_foreign': 'Asing 5d', 'card_lbl_fair': 'Acuan',
+        'card_lbl_fair_status': 'Acuan (status)', 'card_lbl_target': 'Target / Stop',
+        'card_lbl_corp': 'Aksi Korporat', 'card_lbl_momentum': 'Momentum',
+        'card_lbl_fundamental': 'Fundamental',
+        'fair_murah': 'murah', 'fair_netral': 'netral', 'fair_mahal': 'mahal',
+        'corp_RI': 'right issue', 'corp_DIV': 'dividen', 'corp_SPL': 'split',
+        'lookup_loading': 'menganalisis {sym}… (harga Sectors + fundamental, ~2–4 kredit)',
+        'regime_up': 'IHSG regime: UP{mgn} — scanning',
+        'regime_down': 'IHSG regime: DOWN{mgn} — mode tunggu, jangan entry',
+        'sortlabel_def': 'Skor ▼',
+    },
+    'en': {
+        'lang_toggle': 'ID', 'lang_toggle_url': 'id',
+        'opt_all': 'All', 'opt_ok': 'OK', 'opt_wait': 'WAIT/SKIP',
+        'foreign_chk': 'Foreign +5d', 'search_ph': 'search (BBCA)',
+        'analyze_btn': 'analyze', 'watch_chk': '★',
+        'sort_label': 'Sort:', 'status_label': 'Status:',
+        'col_symbol': 'Stock', 'col_score': 'Score', 'col_momentum': 'Momentum',
+        'col_funda': 'Funda', 'col_foreign': 'Foreign 5d', 'col_fair': 'Fair',
+        'col_target': 'Target / Stop', 'col_corp': 'Corp Action',
+        'col_status': 'Status', 'col_star': '★',
+        'th_title_fair': 'Current price vs 252-day median close (±8% band). cheap = below lower band, neutral = inside band, expensive = above upper band. Not buy/sell advice, context only.',
+        'th_title_target': 'Target +20d (backtest top-5 median spread +1.65%/20d) & Stop-loss (52-week low)',
+        'th_title_corp': 'Corporate actions ≤2 months ahead (rights issue, dividend, stock split) from Sectors API. Stocks undergoing rights issue get price-adjusted — targets/stops and momentum can mislead. Informational column.',
+        'card_lbl_foreign': 'Foreign 5d', 'card_lbl_fair': 'Fair',
+        'card_lbl_fair_status': 'Fair (status)', 'card_lbl_target': 'Target / Stop',
+        'card_lbl_corp': 'Corp Action', 'card_lbl_momentum': 'Momentum',
+        'card_lbl_fundamental': 'Fundamental',
+        'fair_murah': 'cheap', 'fair_netral': 'neutral', 'fair_mahal': 'expensive',
+        'corp_RI': 'rights issue', 'corp_DIV': 'dividend', 'corp_SPL': 'split',
+        'lookup_loading': 'analyzing {sym}… (Sectors price + fundamentals, ~2–4 credits)',
+        'regime_up': 'IHSG regime: UP{mgn} — scanning',
+        'regime_down': 'IHSG regime: DOWN{mgn} — wait mode, no entry',
+        'sortlabel_def': 'Score ▼',
+    },
+}
+
 PAGE = """<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ARUS — IDX Flow Screener</title>
@@ -165,22 +218,23 @@ details .x b{color:#e6e6e6}.x .q{color:#79c0ff}.x .a{color:#7ee787}
 <div class="sub">Screener IDX — momentum &times; fundamental &times; aliran dana (data: Sectors API). Data per <span id=asof></span> · <a href="#cara-baca" style="color:#58a6ff;text-decoration:none">cara baca ↓</a></div>
 <div id=regime class="regime"></div>
 <div class="controls">
-  <label title="klik judul kolom tabel untuk mengurutkan ▲▼">Urut:</label>
+  <label title="klik judul kolom tabel untuk mengurutkan ▲▼" data-i18n="sort_label">Urut:</label>
   <b id=sortlabel>Skor ▼</b>
-  <label>Status:</label>
+  <label data-i18n="status_label">Status:</label>
   <select id=stat>
-    <option value="">Semua</option>
-    <option value="ok">OK</option>
-    <option value="wait">WAIT/SKIP</option>
+    <option value="" data-i18n="opt_all">Semua</option>
+    <option value="ok" data-i18n="opt_ok">OK</option>
+    <option value="wait" data-i18n="opt_wait">WAIT/SKIP</option>
   </select>
-  <label><input type=checkbox id=only-foreign> Asing +5d</label>
+  <label><input type=checkbox id=only-foreign> <span data-i18n="foreign_chk">Asing +5d</span></label>
   <input type=text id=q placeholder="cari (BBCA)">
-  <button id=lookup-btn style="background:#21262d;color:#58a6ff;border:1px solid #30363d;border-radius:6px;padding:5px 10px;cursor:pointer">analisis</button>
+  <button id=lookup-btn style="background:#21262d;color:#58a6ff;border:1px solid #30363d;border-radius:6px;padding:5px 10px;cursor:pointer" data-i18n="analyze_btn">analisis</button>
   <label><input type=checkbox id=watch> ★</label>
+  <a id=lang-toggle href="?lang=en" style="background:#21262d;color:#58a6ff;border:1px solid #30363d;border-radius:6px;padding:5px 10px;cursor:pointer;text-decoration:none;font-size:13px;margin-left:4px" data-i18n="lang_toggle">EN</a>
 </div>
 <div id=lookup-box style="display:none;background:#161b22;border:1px solid #30363d;border-radius:8px;padding:12px 16px;margin-bottom:12px;font-size:13px"></div>
 <div class="tbl-wrap"><table><thead><tr>
-<th data-k=symbol style="cursor:pointer">Saham</th><th data-k=score style="cursor:pointer">Skor</th><th data-k=momentum style="cursor:pointer">Momentum</th><th data-k=fundamental style="cursor:pointer">Funda</th><th data-k=foreign style="cursor:pointer">Asing 5d</th><th data-k=fair style="cursor:pointer" title="Posisi harga saat ini vs median close 252 hari (±8% pita). murah = di bawah pita bawah, netral = dalam pita, mahal = di atas pita atas. Bukan saran beli/jual, hanya konteks.">Acuan</th><th data-k=target style="cursor:pointer" title="Target +20d (backtest top-5 median spread +1.65%/20d) & Stop-loss (52-week low)">Target / Stop</th><th data-k=corp style="cursor:pointer" title="Aksi korporat ≤2 bulan ke depan (right issue, dividen, stock split) dari Sectors API. Harga saham yang sedang right issue akan disesuaikan — target/stop dan momentum bisa menyesatkan. Kolom informasi.">Aksi</th><th data-k=status>Status</th><th title="klik ★ untuk watchlist">★</th>
+<th data-k=symbol style="cursor:pointer" data-i18n="col_symbol">Saham</th><th data-k=score style="cursor:pointer" data-i18n="col_score">Skor</th><th data-k=momentum style="cursor:pointer" data-i18n="col_momentum">Momentum</th><th data-k=fundamental style="cursor:pointer" data-i18n="col_funda">Funda</th><th data-k=foreign style="cursor:pointer" data-i18n="col_foreign">Asing 5d</th><th data-k=fair style="cursor:pointer" data-i18n-title="th_title_fair" title="Posisi harga saat ini vs median close 252 hari (±8% pita). murah = di bawah pita bawah, netral = dalam pita, mahal = di atas pita atas. Bukan saran beli/jual, hanya konteks." data-i18n="col_fair">Acuan</th><th data-k=target style="cursor:pointer" data-i18n-title="th_title_target" title="Target +20d (backtest top-5 median spread +1.65%/20d) & Stop-loss (52-week low)" data-i18n="col_target">Target / Stop</th><th data-k=corp style="cursor:pointer" data-i18n-title="th_title_corp" title="Aksi korporat ≤2 bulan ke depan (right issue, dividen, stock split) dari Sectors API. Harga saham yang sedang right issue akan disesuaikan — target/stop dan momentum bisa menyesatkan. Kolom informasi." data-i18n="col_corp">Aksi</th><th data-k=status data-i18n="col_status">Status</th><th title="klik ★ untuk watchlist" data-i18n="col_star">★</th>
 </tr></thead>
 <tbody id=tb></tbody></table></div>
 <div id=ledger-banner class="ledger-banner"></div>
@@ -202,6 +256,40 @@ details .x b{color:#e6e6e6}.x .q{color:#79c0ff}.x .a{color:#7ee787}
 <div class=foot>Skor = ranking probabilitas, bukan prediksi pasti. Backtest momentum+fundamental: IC +0.093 (n=38 rebalance, top&gt;bot 63%). Kolom flow = <b>informasi, bukan sinyal</b> — backtest kami menunjukkan flow belum bisa dipercaya sebagai sinyal (detail di README); tiap sinyal flow dicatat ke ledger dan diukur hasilnya setelah 20 hari. Bukan rekomendasi beli/jual.</div>
 <script>
 let D=null;let WL=new Set(JSON.parse(localStorage.getItem('arus-watchlist')||'[]'));
+let I18N_DATA=null;let LANG='id';
+// Apply lang to all data-i18n / data-i18n-title nodes; idempotent.
+function applyLang(){
+  if(!I18N_DATA||!LANG) return;
+  const t=I18N_DATA[LANG]||I18N_DATA.id;
+  document.documentElement.lang=LANG;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const k=el.getAttribute('data-i18n');
+    if(t[k]!=null) el.textContent=t[k];
+  });
+  document.querySelectorAll('[data-i18n-title]').forEach(el=>{
+    const k=el.getAttribute('data-i18n-title');
+    if(t[k]!=null) el.setAttribute('title',t[k]);
+  });
+  // search placeholder
+  const q=document.getElementById('q');
+  if(q&&t.search_ph) q.setAttribute('placeholder',t.search_ph);
+  // toggle href to other lang
+  const toggle=document.getElementById('lang-toggle');
+  if(toggle){
+    toggle.setAttribute('href','?lang='+(LANG==='id'?'en':'id'));
+  }
+  // sort label default reset
+  const sl=document.getElementById('sortlabel');
+  if(sl&&t.sortlabel_def&&!sl.dataset.custom) sl.textContent=t.sortlabel_def;
+}
+// Fetch i18n + lang (lang from URL ?lang=, default 'id'), then apply.
+fetch('/api/i18n').then(r=>r.json()).then(d=>{
+  I18N_DATA=d;
+  const m=location.search.match(/[?&]lang=(id|en)/);
+  LANG=m?m[1]:'id';
+  applyLang();
+  document.cookie='arus_lang='+LANG+';path=/;max-age=2592000';
+});
 fetch('/api').then(r=>r.json()).then(d=>{D=d;render();});
 function fmtForeign(r){if(r.foreign_5d_idrb==null)return null;const a=Math.abs(r.foreign_5d_idrb);
  const s=a>=1000?(a/1000).toFixed(2)+' T':a.toFixed(0)+' M';
@@ -284,6 +372,21 @@ document.getElementById('cb').innerHTML=rows.map(r=>{
 <div class="card-row"><span class=card-lbl>Momentum</span><span class=card-val>${bar(r.momentum)}</span></div>
 <div class="card-row"><span class=card-lbl>Fundamental</span><span class=card-val>${bar(r.fundamental)}</span></div>
 </div>`}).join('');
+// Apply lang ke card labels juga (mobile view render post-API-fetch)
+function applyLangCards(){
+  if(!I18N_DATA||!LANG) return;
+  const t=I18N_DATA[LANG]||I18N_DATA.id;
+  document.querySelectorAll('.card .card-lbl').forEach(el=>{
+    const id=el.textContent.trim();
+    if(id==='Asing 5d'||id==='Foreign 5d') el.textContent=t.card_lbl_foreign;
+    else if(id==='Acuan'||id==='Fair') el.textContent=t.card_lbl_fair;
+    else if(id==='Acuan (status)'||id==='Fair (status)') el.textContent=t.card_lbl_fair_status;
+    else if(id==='Target / Stop') el.textContent=t.card_lbl_target;
+    else if(id==='Aksi Korporat'||id==='Corp Action') el.textContent=t.card_lbl_corp;
+    else if(id==='Momentum') el.textContent=t.card_lbl_momentum;
+    else if(id==='Fundamental') el.textContent=t.card_lbl_fundamental;
+  });
+}
 // wire up stars in card view (table stars handled by static delegation)
 function toggleWL(sym){if(WL.has(sym))WL.delete(sym);else WL.add(sym);localStorage.setItem('arus-watchlist',JSON.stringify([...WL]));render();}
 document.querySelectorAll('.card .star').forEach(s=>{s.onclick=()=>toggleWL(s.dataset.s);});
@@ -300,6 +403,7 @@ if(total>0){
   lbEl.innerHTML=`<div class="lb-head"><div class="lb-title">📊 Ledger sinyal flow</div><a class="lb-link" href="/ledger">lihat halaman →</a></div><div class="lb-empty">Rapor masih kosong — <b>${total}</b> sinyal tercatat.<br>Cron <code>app.main</code> → <code>scripts/ledger_resolve.py</code> jalan otomatis tiap hari bursa. Halaman <a href="/ledger" style="color:#58a6ff">/ledger</a> akan menampilkan semua sinyal + return 20d.</div>`;
 }
 document.getElementById('ledger').innerHTML='Ledger sinyal flow: '+(d.ledger.n>0?`n=${d.ledger.n}, hit ${(d.ledger.hit*100).toFixed(0)}%, median ${(d.ledger.med*100).toFixed(1)}%`:'n=0 — rapor mulai terisi saat cron live aktif');
+applyLangCards();
 }
 ['stat','only-foreign','watch'].forEach(id=>document.getElementById(id).addEventListener('change',render));
 document.querySelectorAll('th[data-k]').forEach(th=>th.addEventListener('click',()=>{
@@ -493,6 +597,11 @@ class H(BaseHTTPRequestHandler):
         if self.path == '/api':
             body = json.dumps(build_rows()).encode()
             self.send_response(200); self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', str(len(body))); self.end_headers(); self.wfile.write(body)
+        elif self.path == '/api/i18n':
+            body = json.dumps(I18N).encode()
+            self.send_response(200); self.send_header('Content-Type', 'application/json')
+            self.send_header('Cache-Control', 'public, max-age=3600')
             self.send_header('Content-Length', str(len(body))); self.end_headers(); self.wfile.write(body)
         elif self.path == '/api/ledger':
             body = json.dumps(ledger_page_data()).encode()
