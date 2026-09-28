@@ -389,6 +389,7 @@ scripts/
   fetch_sectors_prices.py  — harga harian + IHSG dari Sectors (runtime utama)
   fetch_sectors_daily.py   — refresh ringan tiap hari (cron harian)
   fetch_corp_actions.py    — aksi korporat IDX (right issue/dividen/split) — 1 kredit, cron harian
+  bt_corp_action_test.py   — exploratory backtest pengaruh corporate action (yfinance, 13-hari window H-7..H+5, return+vol+gap) — tidak masuk scoring
   fetch_one.py             — tambah 1 ticker on-demand ke universe (~46 kredit)
   lookup.py                — analisis ad-hoc ticker apa pun (~2-4 kredit)
   bt_proxy.py              — backtest gate IHSG-proxy (window panjang)
